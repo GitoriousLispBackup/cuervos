@@ -248,6 +248,16 @@
 ;	      resultado))))
 ;    (nreverse resultado)))
 
+;debe devolver una lista de nodos con los posibles movimientos que se puede hacer
+(defun sucesores (nodo)
+  ;si es buitre
+  ;  si es el primer movimiento, buscar un sitio donde poner el buitre
+  ;  si no, se puede mover o incluso saltar
+  ;si es cuervos
+  ;  si aún quedan cuervos por poner, buscar un sitio donde ponerlos
+  ;  si no, buscar movimientos posibles de cada cuervo que haya en el tablero
+)
+
 (load "minimax.lisp")
 
 ;;;;;;;;;;;;;
