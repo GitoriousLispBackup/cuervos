@@ -2,14 +2,20 @@
 ;;; Interfaz ;;;
 ;;;;;;;;;;;;;;;;
 
-(defvar *estado-inicial* '(0 0 0 0 0 0 0 0 0 0))
+(defvar *estado-inicial* '(0 0 0 0 0 0 0 0 0 0 0))
 (defvar *estado-actual* *estado-inicial*)
+(defvar *nodo-j-inicial*)
+(defvar *ultimo-movimiento*)
 ;max es la maquina
 ;min es el humano
 (defvar *jugador-inicial* 'max)
 (defvar *jugador-actual* 'max)
+
 (defvar *max-humano* nil)
 (defvar *min-humano* t)
+
+(defvar *contador-turnos* 1) ;impar, cuervos; par, buitre
+
 (defvar *cuervos-jugados* 0)
 (defvar *cuervos-comidos* 0)
 (defvar *funcion-ia*)
@@ -40,7 +46,8 @@
 		   (setf opcion2 (read))
 		   (cond
 		     ((= opcion2 1)
-		      (format t "La máquina jugará con el buitre~%"))
+		      (format t "La máquina jugará con el buitre~%")
+		      (setf *jugador-inicial* 'min))
 		     ((= opcion2 2)
 		      (format t "La máquina jugará con los cuervos~%"))
 		     ((= opcion2 3)
@@ -50,18 +57,22 @@
 	    (setf salir t))))
     (format t "~%Adiós.~%")))
 
+(defun quien-okupa (n estado)
+  (let ((a (nth n estado)))
+    (cond ((equal a 0) n)
+	  (t a))))
 
-(defun imprimir-tablero ()
-  (format t "          ~a~%~%" (nth 0 *estado-actual*))
+(defun imprimir-tablero (&optional (estado *estado-actual*) (canal t))
+  (format t "          ~a~%~%" (quien-okupa 0 estado))
   (format t " ~a     ~a     ~a     ~a~%~%"
-	  (nth 1 *estado-actual*) (nth 2 *estado-actual*)
-	  (nth 3 *estado-actual*) (nth 4 *estado-actual*))
-  (format t "     ~a         ~a~%" (nth 5 *estado-actual*) (nth 6 *estado-actual*))
-  (format t "          ~a~%~%" (nth 7 *estado-actual*))
-  (format t "  ~a                ~a~%" (nth 8 *estado-actual*) (nth 9 *estado-actual*))
+	  (quien-okupa 1 estado) (quien-okupa 2 estado)
+	  (quien-okupa 3 estado) (quien-okupa 4 estado))
+  (format t "     ~a         ~a~%" (quien-okupa 5 estado) (quien-okupa 6 estado))
+  (format t "          ~a~%~%" (quien-okupa 7 estado))
+  (format t "  ~a                ~a~%" (quien-okupa 8 estado) (quien-okupa 9 estado))
   (format t "Jugador siguiente: ~a~%" *jugador-actual*))
 	  
-;el tablero se representa como un array de tamaño 10, el numero de casillas que hay con C o B o nil
+;el tablero se representa como un array de tamaño 10, el numero de casillas que hay con C o B o nil, más una posicion más con el numero de cuervos comidos
 ;         0
 ;
 ; 1    2     3    4
@@ -129,6 +140,31 @@
 ;   8            9
 (defvar *lista-saltos* '((5 6) (3 7) (4 8) (1 9) (2 7) (0 9) (0 8) (1 4) (2 6) (3 5)))
 
+;; Estructura que representa un nodo del arbol de busqueda
+(defstruct (nodo-j (:constructor crea-nodo-j)
+                   (:conc-name nil)
+                   (:print-function escribe-nodo-j))
+  estado 		;; Tablero modificado
+  jugador
+  valor) 		;; Valor heuristico de la nueva jugada
+
+;; Funcion que muestra por pantalla (u otro canal) el nodo dado
+(defun escribe-nodo-j (nodo-j &optional (canal t))
+  (format canal "~%Estado :~%")
+  (imprimir-tablero (estado nodo-j) canal)
+  (format canal "~%ultimo movimiento : ~a" *ultimo-movimiento*))
+;; 	(format canal "~%Jugador : ~a" (jugador nodo-j)))
+
+;; Funcion que inicializa *nodo-j-inicial*
+(defun crea-nodo-j-inicial (jugador)
+  (setf *estado-inicial* (make-array '(6 7)))
+  (setf *nodo-j-inicial*
+        (crea-nodo-j :estado *estado-inicial*
+                     :jugador jugador)))
+
+
+(defun comidos (estado) (first (last estado)))
+
 (defun buscar-buitre (estado)
   (let ((resultado -1))
     (loop for i from 0 to 9
@@ -151,7 +187,7 @@
   (let ((resultado nil))
     ;quedan 3 cuervos
     (cond
-      ((>= *cuervos-comidos* 4) (setf resultado t))
+      ((>= (comidos estado) 4) (setf resultado t))
       (t
        ;el buitre no se puede mover
        ;donde esta el buitre
@@ -163,30 +199,85 @@
 	       (t nil)))))
     resultado))
 
+(defun juegan-cuervos ()
+  (oddp *contador-turnos*))
+
+(defun juega-buitre ()
+  (evenp *contador-turnos*))
+
+(defun faltan-cuervos ()
+  (< *cuervos-jugados* 14))
+
+(defun jugar-humano ()
+  (let ((movimiento nil))
+    (cond ((and (juegan-cuervos) (faltan-cuervos))
+	   ;decir que tiene que poner un cuervo en juego
+	   (format t "Tienes que poner un cuervo en juego~%")
+	   (format t "Elige una posicion del tablero donde ponerlo:~%")
+	   (setf movimiento (list -2 (read))))
+	  ((juegan-cuervos)
+	   ;ofrecer mover un cuervo
+	   (format t "Tienes que mover un cuervo. ¿Origen?~%")
+	   (setf movimiento (list (read) -1))
+	   (format t "¿Destino?~%")
+	   (setf movimiento (list (first movimiento) (read))))
+	  ((juega-buitre)
+	   ;ofrecer mover o saltar el buitre
+	   (format t "¿Dónde mueves el buitre?~%")
+	   (setf movimiento (list -1 (read)))))
+    movimiento))
+
+;TODO
+(defun jugar-maquina ()
+)
+
 (defun jugar ()
   ;imprimir el estado actual
   (imprimir-tablero)
-  ;TODO hacer la eleccion del movimiento
-  ;  -si el jugador actual es máquina -> minimax
-  ;  -si el jugaador es humnao -> menu de opciones
-  ;TODO ejecutar el movimiento
-  ;TODO actualizar jugador actual y estado actual
-  ;TODO devolver el nuevo estado
+  (let ((movimiento nil) (nuevo-estado nil))
+    ;hacer la eleccion del movimiento
+    ;  -si el jugador actual es máquina -> minimax
+    ;  -si el jugador es humano -> menu de opciones
+    (cond ((or (and (equal *jugador-actual* 'max) *max-humano*)
+	       (and (equal *jugador-actual* 'min) *min-humano*))
+	   (loop until nuevo-estado do
+		(setf movimiento (jugar-humano))
+		(setf nuevo-estado (aplica-movimiento movimiento *estado-actual*))))
+	  (t
+	   (setf movimiento (jugar-maquina))
+	   (setf nuevo-estado (aplica-movimiento movimiento *estado-actual*))))
+    ;ejecutar el movimiento, lo hacemos arriba ya
+    ;(setf nuevo-estado (aplica-movimiento movimiento *estado-actual*))
+    ;actualizar jugador actual, estado actual y contador de turnos
+    (setf *contador-turnos* (1+ *contador-turnos*))
+    (setf *jugador-actual* (contrario *jugador-actual*))
+    (setf *estado-actual* nuevo-estado))
 )
 
-(defun juego ()
-  (let ((fin-juego nil)
-	(un-estado nil))
-    (loop until fin-juego
-	 (setf un-estado (jugar))
-	 (if (es-estado-final estado)
-	     (setf fin-juego t)))
-    (imprimir-fin-juego un-estado)))
-	
+(defun imprimir-fin-juego ()
+  (format t "*** ¡El juego ha terminado! ***")
+  (imprimir-tablero)
+  (setf *contador-turnos* (1- *contador-turnos*))
+  (if (juegan-cuervos)
+      (format t "¡Los cuervos ganan!")
+      (format t "¡El buitre gana!")))
 
+(defun juego ()
+  (let ((fin-juego nil))
+    (loop until fin-juego do
+	 (jugar)
+	 (if (es-estado-final *estado-actual*)
+	     (setf fin-juego t)))
+    (imprimir-fin-juego)))
+	
+;para la funcion estatica, turno,jugador={max,min} 
 ;es-estado-ganador(estado,turno,jugador)
+
 ;*movimientos*
+
+;devuelve un estado
 ;aplica-movimiento(movimiento,estado)
+
 ;f-utilidad(estado,turno)
 
 
