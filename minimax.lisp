@@ -24,10 +24,6 @@
 	      resultado))))
     (nreverse resultado)))
 
-;; Devuelve el jugador contrario al dado
-(defun contrario (jugador)
-  (if (eq jugador 'max) 'min 'max))
-
 ;; Algoritmo MINIMAX
 (defun minimax (nodo-j profundidad)
   (if (or (es-estado-final (estado nodo-j))

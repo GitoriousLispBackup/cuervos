@@ -3,65 +3,64 @@
 ;;;;;;;;;;;;;;;;
 
 (defvar *estado-inicial* '(0 0 0 0 0 0 0 0 0 0))
-(defvar *estado-actual*)
+(defvar *estado-actual* *estado-inicial*)
 ;max es la maquina
 ;min es el humano
 (defvar *jugador-inicial* 'max)
 (defvar *jugador-actual* 'max)
+(defvar *max-humano* nil)
+(defvar *min-humano* t)
 (defvar *cuervos-jugados* 0)
 (defvar *cuervos-comidos* 0)
+(defvar *funcion-ia*)
+
+;; Devuelve el jugador contrario al dado
+(defun contrario (jugador)
+  (if (eq jugador 'max) 'min 'max))
 
 (defun menu ()
   (let ((salir nil) (opcion 0))
     (loop until salir do
-	 (format t "El buitre y los cuervos~%~%")
+	 (format t "~%*** El buitre y los cuervos ***~%~%")
 	 (format t "Elige una opción:~%")
 	 (format t " 1) Humano contra Humano~%")
 	 (format t " 2) Humano contra Máquina~%")
 	 (format t " 3) Máquina contra Máquina~%")
-	 (format t " 4) Opciones~%")
-	 (format t " 5) Salir~%~%Opción:")
+	 (format t " 4) Salir~%~%Opción:")
 	 (setf opcion (read))
 	 (cond
 	   ((= opcion 1) nil)
-	   ((= opcion 2) nil)
+	   ((= opcion 2)
+	    (let ((salir2 nil) (opcion2 0))
+	      (loop until salir2 do
+		   (format t "~%¿Con quién jugará la máquina?~%")
+		   (format t " 1) El buitre~%")
+		   (format t " 2) Los cuervos~%")
+		   (format t " 3) Atrás~%~%Opción:")
+		   (setf opcion2 (read))
+		   (cond
+		     ((= opcion2 1)
+		      (format t "La máquina jugará con el buitre~%"))
+		     ((= opcion2 2)
+		      (format t "La máquina jugará con los cuervos~%"))
+		     ((= opcion2 3)
+		      (setf salir2 t))))))
 	   ((= opcion 3) nil)
 	   ((= opcion 4)
-	    (let ((saliro nil) (opciono 0))
-	      (loop until saliro do
-		   (format t "Opciones:~%")
-		   (format t " 1) Usar primera función estática~%")
-		   (format t " 2) Usar segunda función estática~%")
-		   (if (equal *jugador-inicial* 'max)
-		       (format t " 3) Quien empieza: Máquina~%")
-		       (format t " 3) Quien empieza: Humano~%"))
-		   (format t " 4) Atrás~%~%Opción:")
-		   (setf opciono (read))
-		   (cond
-		     ((= opciono 1) nil)
-		     ((= opciono 2) nil)
-		     ((= opciono 3)
-		      (setf *jugador-inicial* (contrario *jugador-inicial*)))
-		     ((= opciono 4)
-		      (setf saliro t))))))
-	   ((= opcion 5)
 	    (setf salir t))))
-    (format t "Adiós.~%")))
+    (format t "~%Adiós.~%")))
 
 
 (defun imprimir-tablero ()
   (format t "          ~a~%~%" (nth 0 *estado-actual*))
-  (format t " ~a     ~a     ~a     ~a~%~%" (nth 1 *estado-actual*) (nth 2 *estado-actual*) (nth 3 *estado-actual*) (nth 4 *estado-actual*))
+  (format t " ~a     ~a     ~a     ~a~%~%"
+	  (nth 1 *estado-actual*) (nth 2 *estado-actual*)
+	  (nth 3 *estado-actual*) (nth 4 *estado-actual*))
   (format t "     ~a         ~a~%" (nth 5 *estado-actual*) (nth 6 *estado-actual*))
   (format t "          ~a~%~%" (nth 7 *estado-actual*))
   (format t "  ~a                ~a~%" (nth 8 *estado-actual*) (nth 9 *estado-actual*))
   (format t "Jugador siguiente: ~a~%" *jugador-actual*))
 	  
-
-(setf *estado-actual* '(C 0 B C 0 0 0 0 0 0))
-(imprimir-tablero)
-
-
 ;el tablero se representa como un array de tamaño 10, el numero de casillas que hay con C o B o nil
 ;         0
 ;
@@ -181,8 +180,7 @@
     (loop until fin-juego
 	 (setf un-estado (jugar))
 	 (if (es-estado-final estado)
-	     (setf fin-juego t)
-	     nil))
+	     (setf fin-juego t)))
     (imprimir-fin-juego un-estado)))
 	
 
