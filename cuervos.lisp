@@ -184,11 +184,37 @@
     (imprimir-fin-juego un-estado)))
 	
 
-;es-estado-ganador(estado,turno,jugador)
-;*movimientos*
-;aplica-movimiento(movimiento,estado)
-;f-utilidad(estado,turno)
+(defun es-estado-ganador(estado,turno,jugador)
+	(let ((resultado nil))
+		(and ((es-estado-final estado) (equal turno jugador))
+			(setf resultado t)))
+	resultado))
 
+;*movimientos*
+(defvar *movimientos* '(origen destino))
+;aplica-movimiento(movimiento,estado)
+(defun aplica-movimiento(movimiento,estado)
+	(let ((estado-temporal estado))
+		(cond (or
+				((and
+					(juega-buitre)
+					(or (member (nth 1 movimiento) (se-puede-mover estado-temporal (buscar-buitre estado)))
+						(member (nth 1 movimiento) (puede-saltar estado (buscar-buitre estado)))))
+							(setf (nth (buscar-buitre estado) estado-temporal) 0)
+							(setf (nth (nth 1 movimiento) estado-temporal) 'B))
+						
+				((and
+					(juegan-cuervos)
+					(or
+						(member (nth 1 movimiento) (se-puede-mover estado-temporal (nth 0 movimiento))))
+						(= (nth 0 movimiento) -2))
+							(cond ((not(= (nth 0 movimiento) -2))
+								(setf (nth (nth 0 movimiento) estado-temporal) 0)))
+							(setf (nth (nth 1 movimiento) estado-temporal) 'C)))
+			(t (setf estado-temporal nil)))
+						
+	estado-temporal))
+		
 
 ;(load "minimax.lisp")
 
