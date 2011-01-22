@@ -47,9 +47,12 @@
 		   (cond
 		     ((= opcion2 1)
 		      (format t "La máquina jugará con el buitre~%")
-		      (setf *jugador-inicial* 'min))
+		      (setf *jugador-inicial* 'min)
+		      (setf *jugador-actual* 'min)
+		      (juego))
 		     ((= opcion2 2)
-		      (format t "La máquina jugará con los cuervos~%"))
+		      (format t "La máquina jugará con los cuervos~%")
+		      (juego))
 		     ((= opcion2 3)
 		      (setf salir2 t))))))
 	   ((= opcion 3) nil)
@@ -193,14 +196,15 @@
 	collect x))
 (defun es-estado-final (estado)
   (let ((resultado nil))
-    ;quedan 3 cuervos
     (cond
+      ;quedan 3 cuervos
       ((>= (comidos estado) 4) (setf resultado t))
       (t
        ;el buitre no se puede mover
        ;donde esta el buitre
        (let ((i (buscar-buitre estado)))
-	 (cond ((> (length (se-puede-mover estado i)) 0)
+	 (cond ((= i -1) nil)
+	       ((> (length (se-puede-mover estado i)) 0)
 		(setf resultado t))
 	       ((> (length (puede-saltar estado i)) 0)
 		(setf resultado t))
@@ -220,16 +224,17 @@
   (let ((estado-temporal estado))
     (cond ((and
 	    (juega-buitre)
-	    (or (member (nth 1 movimiento) (se-puede-mover estado-temporal (buscar-buitre estado)))
-		(member (nth 1 movimiento) (puede-saltar estado (buscar-buitre estado)))
-		(and (= (nth 0 movimiento) -3) (= (nth (nth 1 movimiento) estado) 0))))
+	    (or
+	     (and (= (nth 0 movimiento) -3) (= (nth (nth 1 movimiento) estado) 0))
+	     (member (nth 1 movimiento) (se-puede-mover estado-temporal (buscar-buitre estado)))
+	     (member (nth 1 movimiento) (puede-saltar estado (buscar-buitre estado)))))
 	   (if (= (nth 0 movimiento) -2) (setf (nth (buscar-buitre estado) estado-temporal) 0))
 	   (setf (nth (nth 1 movimiento) estado-temporal) 'B))
 	  ((and
 	    (juegan-cuervos)
 	    (or
-	     (member (nth 1 movimiento) (se-puede-mover estado-temporal (nth 0 movimiento))))
-	     (and (= (nth 0 movimiento) -1) (= (nth (nth 1 movimiento) estado) 0)))
+	     (and (= (nth 0 movimiento) -1) (= (nth (nth 1 movimiento) estado) 0))
+	     (member (nth 1 movimiento) (se-puede-mover estado-temporal (nth 0 movimiento)))))
 	   (cond ((not(= (nth 0 movimiento) -1))
 		  (setf (nth (nth 0 movimiento) estado-temporal) 0)))
 	   (setf (nth (nth 1 movimiento) estado-temporal) 'C))
