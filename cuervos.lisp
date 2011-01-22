@@ -221,15 +221,16 @@
     (cond ((and
 	    (juega-buitre)
 	    (or (member (nth 1 movimiento) (se-puede-mover estado-temporal (buscar-buitre estado)))
-		(member (nth 1 movimiento) (puede-saltar estado (buscar-buitre estado)))))
-	   (setf (nth (buscar-buitre estado) estado-temporal) 0)
+		(member (nth 1 movimiento) (puede-saltar estado (buscar-buitre estado)))
+		(and (= (nth 0 movimiento) -3) (= (nth (nth 1 movimiento) estado) 0))))
+	   (if (= (nth 0 movimiento) -2) (setf (nth (buscar-buitre estado) estado-temporal) 0))
 	   (setf (nth (nth 1 movimiento) estado-temporal) 'B))
 	  ((and
 	    (juegan-cuervos)
 	    (or
 	     (member (nth 1 movimiento) (se-puede-mover estado-temporal (nth 0 movimiento))))
-	    (= (nth 0 movimiento) -2))
-	   (cond ((not(= (nth 0 movimiento) -2))
+	     (and (= (nth 0 movimiento) -1) (= (nth (nth 1 movimiento) estado) 0)))
+	   (cond ((not(= (nth 0 movimiento) -1))
 		  (setf (nth (nth 0 movimiento) estado-temporal) 0)))
 	   (setf (nth (nth 1 movimiento) estado-temporal) 'C))
 	  (t (setf estado-temporal nil)))
