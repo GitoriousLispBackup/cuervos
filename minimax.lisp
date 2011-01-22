@@ -2,11 +2,6 @@
 ;;; ALGORITMO MINIMAX ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; Valores maximos y minimos para las variables alfa y beta
-(defvar *minimo-valor* -10080)
-(defvar *maximo-valor* 10080)
-(defvar *medio-valor* 720) ;;porque son valores facilmente divisible 2*3*4*5*6
-
 ;; Para un posible nodo del arbol devuelve sus hijos
 (defun sucesores (nodo-j)
   (let ((resultado ()))

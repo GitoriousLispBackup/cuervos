@@ -157,7 +157,7 @@
 
 ;; Funcion que inicializa *nodo-j-inicial*
 (defun crea-nodo-j-inicial (jugador)
-  (setf *estado-inicial* (make-array '(6 7)))
+  (setf *estado-inicial* '(0 0 0 0 0 0 0 0 0 0 0))
   (setf *nodo-j-inicial*
         (crea-nodo-j :estado *estado-inicial*
                      :jugador jugador)))
@@ -235,27 +235,50 @@
 	  (t (setf estado-temporal nil)))
     estado-temporal))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Funciones estaticas ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Valores maximos y minimos para las variables alfa y beta
+(defvar *minimo-valor* -1000)
+(defvar *maximo-valor* 1000)
+(defvar *medio-valor* 0)
+
+(defun f-e-estatica (estado turno))
+
+; da un valor aleatorio al nodo
+(defun funcion-estatica-aleatoria (estado turno)
+  (- (random 2001) 1000))
+
+(setf (symbol-function 'f-e-estatica) #'funcion-estatica-aleatoria)
+
 ;;;;;;;;;;;;;
 ;;; Juego ;;;
 ;;;;;;;;;;;;;
 
 (defun jugar-humano ()
   (let ((movimiento nil))
-    (cond ((and (juegan-cuervos) (faltan-cuervos))
-	   ;decir que tiene que poner un cuervo en juego
-	   (format t "Tienes que poner un cuervo en juego~%")
-	   (format t "Elige una posicion del tablero donde ponerlo:~%")
-	   (setf movimiento (list -2 (read))))
-	  ((juegan-cuervos)
-	   ;ofrecer mover un cuervo
-	   (format t "Tienes que mover un cuervo. ¿Origen?~%")
-	   (setf movimiento (list (read) -1))
-	   (format t "¿Destino?~%")
-	   (setf movimiento (list (first movimiento) (read))))
+    (cond ((juegan-cuervos)
+	   (cond ((faltan-cuervos)
+		  ;decir que tiene que poner un cuervo en juego
+		  (format t "Tienes que poner un cuervo en juego~%")
+		  (format t "Elige una posicion del tablero donde ponerlo:~%")
+		  (setf movimiento (list -1 (read))))
+		 (t
+		  ;ofrecer mover un cuervo
+		  (format t "Tienes que mover un cuervo. ¿Origen?~%")
+		  (setf movimiento (list (read) -1))
+		  (format t "¿Destino?~%")
+		  (setf movimiento (list (first movimiento) (read))))))
 	  ((juega-buitre)
-	   ;ofrecer mover o saltar el buitre
-	   (format t "¿Dónde mueves el buitre?~%")
-	   (setf movimiento (list -1 (read)))))
+	   (cond ((= *contador-turnos* 2)
+		  ;poner el buitre
+		  (format t "Tienes que poner el buitre. ¿Dónde?~%")
+		  (setf movimiento (list -3 (read))))
+		 (t
+		  ;mover o saltar el buitre
+		  (format t "¿Dónde mueves el buitre?~%")
+		  (setf movimiento (list -2 (read)))))))
     movimiento))
 
 ;TODO
@@ -280,6 +303,7 @@
     ;ejecutar el movimiento, lo hacemos arriba ya
     ;(setf nuevo-estado (aplica-movimiento movimiento *estado-actual*))
     ;actualizar jugador actual, estado actual y contador de turnos
+    (setf *ultimo-movimiento* movimiento)
     (setf *contador-turnos* (1+ *contador-turnos*))
     (setf *jugador-actual* (contrario *jugador-actual*))
     (setf *estado-actual* nuevo-estado)))
