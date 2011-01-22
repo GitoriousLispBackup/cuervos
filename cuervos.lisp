@@ -63,15 +63,19 @@
 	  (t a))))
 
 (defun imprimir-tablero (&optional (estado *estado-actual*) (canal t))
-  (format t "          ~a~%~%" (quien-okupa 0 estado))
-  (format t " ~a     ~a     ~a     ~a~%~%"
+  (format canal "          ~a~%~%" (quien-okupa 0 estado))
+  (format canal " ~a     ~a     ~a     ~a~%~%"
 	  (quien-okupa 1 estado) (quien-okupa 2 estado)
 	  (quien-okupa 3 estado) (quien-okupa 4 estado))
-  (format t "     ~a         ~a~%" (quien-okupa 5 estado) (quien-okupa 6 estado))
-  (format t "          ~a~%~%" (quien-okupa 7 estado))
-  (format t "  ~a                ~a~%" (quien-okupa 8 estado) (quien-okupa 9 estado))
-  (format t "Jugador siguiente: ~a~%" *jugador-actual*))
-	  
+  (format canal "     ~a         ~a~%" (quien-okupa 5 estado) (quien-okupa 6 estado))
+  (format canal "          ~a~%~%" (quien-okupa 7 estado))
+  (format canal "  ~a                ~a~%" (quien-okupa 8 estado) (quien-okupa 9 estado))
+  (format canal "Jugador siguiente: ~a~%" *jugador-actual*))
+
+;;;;;;;;;;;;;;;;;;;;
+;;; Estados, etc :::
+;;;;;;;;;;;;;;;;;;;;
+
 ;el tablero se representa como un array de tamaño 10, el numero de casillas que hay con C o B o nil, más una posicion más con el numero de cuervos comidos
 ;         0
 ;
@@ -94,7 +98,8 @@
 ; 9           t   t
 ;10             t t
 (defvar *matriz-movimientos*
-  (make-array '(10 10)	      :initial-contents '((nil nil t t nil nil nil nil nil nil)
+  (make-array '(10 10)
+	      :initial-contents '((nil nil t t nil nil nil nil nil nil)
 				  (nil nil t nil nil t nil nil nil nil)
 				  (t t nil t nil t nil nil nil nil)
 				  (t nil t nil t nil t nil nil nil)
@@ -131,18 +136,13 @@
 				  (nil 5 nil nil 6 nil nil nil nil nil)
 				  (nil nil 5 nil nil nil 7 nil nil nil)
 				  (nil nil nil 6 nil 7 nil nil nil nil))))
-;         0
-;
-; 1    2     3    4
-;
-;     5       6
-;         7
-;   8            9
+
 (defvar *lista-saltos* '((5 6) (3 7) (4 8) (1 9) (2 7) (0 9) (0 8) (1 4) (2 6) (3 5)))
+
 
 ;; Estructura que representa un nodo del arbol de busqueda
 (defstruct (nodo-j (:constructor crea-nodo-j)
-                   (:conc-name nil)
+                   (:conc-name nodo-)
                    (:print-function escribe-nodo-j))
   estado 		;; Tablero modificado
   jugador
@@ -151,7 +151,7 @@
 ;; Funcion que muestra por pantalla (u otro canal) el nodo dado
 (defun escribe-nodo-j (nodo-j &optional (canal t))
   (format canal "~%Estado :~%")
-  (imprimir-tablero (estado nodo-j) canal)
+  (imprimir-tablero (nodo-estado nodo-j) canal)
   (format canal "~%ultimo movimiento : ~a" *ultimo-movimiento*))
 ;; 	(format canal "~%Jugador : ~a" (jugador nodo-j)))
 
@@ -162,8 +162,16 @@
         (crea-nodo-j :estado *estado-inicial*
                      :jugador jugador)))
 
-
 (defun comidos (estado) (first (last estado)))
+
+(defun juegan-cuervos ()
+  (oddp *contador-turnos*))
+
+(defun juega-buitre ()
+  (evenp *contador-turnos*))
+
+(defun faltan-cuervos ()
+  (< *cuervos-jugados* 14))
 
 (defun buscar-buitre (estado)
   (let ((resultado -1))
@@ -199,14 +207,37 @@
 	       (t nil)))))
     resultado))
 
-(defun juegan-cuervos ()
-  (oddp *contador-turnos*))
+(defun es-estado-ganador (estado turno jugador)
+  (let ((resultado nil))
+    (if (and (es-estado-final estado) (equal turno jugador))
+	(setf resultado t))
+  resultado))
 
-(defun juega-buitre ()
-  (evenp *contador-turnos*))
+;*movimientos*
+(defvar *movimientos* '(origen destino))
+;aplica-movimiento(movimiento,estado)
+(defun aplica-movimiento (movimiento estado)
+  (let ((estado-temporal estado))
+    (cond ((and
+	    (juega-buitre)
+	    (or (member (nth 1 movimiento) (se-puede-mover estado-temporal (buscar-buitre estado)))
+		(member (nth 1 movimiento) (puede-saltar estado (buscar-buitre estado)))))
+	   (setf (nth (buscar-buitre estado) estado-temporal) 0)
+	   (setf (nth (nth 1 movimiento) estado-temporal) 'B))
+	  ((and
+	    (juegan-cuervos)
+	    (or
+	     (member (nth 1 movimiento) (se-puede-mover estado-temporal (nth 0 movimiento))))
+	    (= (nth 0 movimiento) -2))
+	   (cond ((not(= (nth 0 movimiento) -2))
+		  (setf (nth (nth 0 movimiento) estado-temporal) 0)))
+	   (setf (nth (nth 1 movimiento) estado-temporal) 'C))
+	  (t (setf estado-temporal nil)))
+    estado-temporal))
 
-(defun faltan-cuervos ()
-  (< *cuervos-jugados* 14))
+;;;;;;;;;;;;;
+;;; Juego ;;;
+;;;;;;;;;;;;;
 
 (defun jugar-humano ()
   (let ((movimiento nil))
@@ -251,8 +282,7 @@
     ;actualizar jugador actual, estado actual y contador de turnos
     (setf *contador-turnos* (1+ *contador-turnos*))
     (setf *jugador-actual* (contrario *jugador-actual*))
-    (setf *estado-actual* nuevo-estado))
-)
+    (setf *estado-actual* nuevo-estado)))
 
 (defun imprimir-fin-juego ()
   (format t "*** ¡El juego ha terminado! ***")
@@ -269,38 +299,6 @@
 	 (if (es-estado-final *estado-actual*)
 	     (setf fin-juego t)))
     (imprimir-fin-juego)))
-	
-(defun es-estado-ganador(estado,turno,jugador)
-	(let ((resultado nil))
-		(and ((es-estado-final estado) (equal turno jugador))
-			(setf resultado t)))
-	resultado))
-
-;*movimientos*
-(defvar *movimientos* '(origen destino))
-;aplica-movimiento(movimiento,estado)
-(defun aplica-movimiento(movimiento,estado)
-	(let ((estado-temporal estado))
-		(cond (or
-				((and
-					(juega-buitre)
-					(or (member (nth 1 movimiento) (se-puede-mover estado-temporal (buscar-buitre estado)))
-						(member (nth 1 movimiento) (puede-saltar estado (buscar-buitre estado)))))
-							(setf (nth (buscar-buitre estado) estado-temporal) 0)
-							(setf (nth (nth 1 movimiento) estado-temporal) 'B))
-						
-				((and
-					(juegan-cuervos)
-					(or
-						(member (nth 1 movimiento) (se-puede-mover estado-temporal (nth 0 movimiento))))
-						(= (nth 0 movimiento) -2))
-							(cond ((not(= (nth 0 movimiento) -2))
-								(setf (nth (nth 0 movimiento) estado-temporal) 0)))
-							(setf (nth (nth 1 movimiento) estado-temporal) 'C)))
-			(t (setf estado-temporal nil)))
-						
-	estado-temporal))
-		
 
 ;(load "minimax.lisp")
 
