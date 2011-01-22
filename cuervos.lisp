@@ -1,6 +1,7 @@
-;;;;;;;;;;;;;;;;
-;;; Interfaz ;;;
-;;;;;;;;;;;;;;;;
+;(declaim #+sbcl(sb-ext:muffle-conditions style-warning))
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Variables globales ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defvar *estado-inicial* '(0 0 0 0 0 0 0 0 0 0 0))
 (defvar *estado-actual* *estado-inicial*)
@@ -18,66 +19,6 @@
 
 (defvar *cuervos-jugados* 0)
 (defvar *cuervos-comidos* 0)
-(defvar *funcion-ia*)
-
-;; Devuelve el jugador contrario al dado
-(defun contrario (jugador)
-  (if (eq jugador 'max) 'min 'max))
-
-(defun menu ()
-  (let ((salir nil) (opcion 0))
-    (loop until salir do
-	 (format t "~%*** El buitre y los cuervos ***~%~%")
-	 (format t "Elige una opción:~%")
-	 (format t " 1) Humano contra Humano~%")
-	 (format t " 2) Humano contra Máquina~%")
-	 (format t " 3) Máquina contra Máquina~%")
-	 (format t " 4) Salir~%~%Opción:")
-	 (setf opcion (read))
-	 (cond
-	   ((= opcion 1) nil)
-	   ((= opcion 2)
-	    (let ((salir2 nil) (opcion2 0))
-	      (loop until salir2 do
-		   (format t "~%¿Con quién jugará la máquina?~%")
-		   (format t " 1) El buitre~%")
-		   (format t " 2) Los cuervos~%")
-		   (format t " 3) Atrás~%~%Opción:")
-		   (setf opcion2 (read))
-		   (cond
-		     ((= opcion2 1)
-		      (format t "La máquina jugará con el buitre~%")
-		      (setf *jugador-inicial* 'min)
-		      (setf *jugador-actual* 'min)
-		      (juego))
-		     ((= opcion2 2)
-		      (format t "La máquina jugará con los cuervos~%")
-		      (juego))
-		     ((= opcion2 3)
-		      (setf salir2 t))))))
-	   ((= opcion 3) nil)
-	   ((= opcion 4)
-	    (setf salir t))))
-    (format t "~%Adiós.~%")))
-
-(defun quien-okupa (n estado)
-  (let ((a (nth n estado)))
-    (cond ((equal a 0) n)
-	  (t a))))
-
-(defun imprimir-tablero (&optional (estado *estado-actual*) (canal t))
-  (format canal "          ~a~%~%" (quien-okupa 0 estado))
-  (format canal " ~a     ~a     ~a     ~a~%~%"
-	  (quien-okupa 1 estado) (quien-okupa 2 estado)
-	  (quien-okupa 3 estado) (quien-okupa 4 estado))
-  (format canal "     ~a         ~a~%" (quien-okupa 5 estado) (quien-okupa 6 estado))
-  (format canal "          ~a~%~%" (quien-okupa 7 estado))
-  (format canal "  ~a                ~a~%" (quien-okupa 8 estado) (quien-okupa 9 estado))
-  (format canal "Jugador siguiente: ~a~%" *jugador-actual*))
-
-;;;;;;;;;;;;;;;;;;;;
-;;; Estados, etc :::
-;;;;;;;;;;;;;;;;;;;;
 
 ;el tablero se representa como un array de tamaño 10, el numero de casillas que hay con C o B o nil, más una posicion más con el numero de cuervos comidos
 ;         0
@@ -142,28 +83,13 @@
 
 (defvar *lista-saltos* '((5 6) (3 7) (4 8) (1 9) (2 7) (0 9) (0 8) (1 4) (2 6) (3 5)))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Funciones auxiliares ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; Estructura que representa un nodo del arbol de busqueda
-(defstruct (nodo-j (:constructor crea-nodo-j)
-                   (:conc-name nodo-)
-                   (:print-function escribe-nodo-j))
-  estado 		;; Tablero modificado
-  jugador
-  valor) 		;; Valor heuristico de la nueva jugada
-
-;; Funcion que muestra por pantalla (u otro canal) el nodo dado
-(defun escribe-nodo-j (nodo-j &optional (canal t))
-  (format canal "~%Estado :~%")
-  (imprimir-tablero (nodo-estado nodo-j) canal)
-  (format canal "~%ultimo movimiento : ~a" *ultimo-movimiento*))
-;; 	(format canal "~%Jugador : ~a" (jugador nodo-j)))
-
-;; Funcion que inicializa *nodo-j-inicial*
-(defun crea-nodo-j-inicial (jugador)
-  (setf *estado-inicial* '(0 0 0 0 0 0 0 0 0 0 0))
-  (setf *nodo-j-inicial*
-        (crea-nodo-j :estado *estado-inicial*
-                     :jugador jugador)))
+;; Devuelve el jugador contrario al dado
+(defun contrario (jugador)
+  (if (eq jugador 'max) 'min 'max))
 
 (defun comidos (estado) (first (last estado)))
 
@@ -190,10 +116,53 @@
   (loop for x in (nth i *lista-movimientos*)
      when (equal (nth x estado) 0)
        collect x))
+
  (defun puede-saltar (estado i)
    (loop for x in (nth i *lista-saltos*)
 	when (equal (nth x estado) 0)
 	collect x))
+
+(defun quien-okupa (n estado)
+  (let ((a (nth n estado)))
+    (cond ((equal a 0) n)
+	  (t a))))
+
+(defun imprimir-tablero (&optional (estado *estado-actual*) (canal t))
+  (format canal "          ~a~%~%" (quien-okupa 0 estado))
+  (format canal " ~a     ~a     ~a     ~a~%~%"
+	  (quien-okupa 1 estado) (quien-okupa 2 estado)
+	  (quien-okupa 3 estado) (quien-okupa 4 estado))
+  (format canal "     ~a         ~a~%" (quien-okupa 5 estado) (quien-okupa 6 estado))
+  (format canal "          ~a~%~%" (quien-okupa 7 estado))
+  (format canal "  ~a                ~a~%" (quien-okupa 8 estado) (quien-okupa 9 estado))
+  (format canal "Jugador siguiente: ~a~%" *jugador-actual*))
+
+;;;;;;;;;;;;;;;;;;;;
+;;; Estados, etc :::
+;;;;;;;;;;;;;;;;;;;;
+
+;; Estructura que representa un nodo del arbol de busqueda
+(defstruct (nodo-j (:constructor crea-nodo-j)
+                   (:conc-name nodo-)
+                   (:print-function escribe-nodo-j))
+  estado 		;; Tablero modificado
+  jugador
+  valor) 		;; Valor heuristico de la nueva jugada
+
+;; Funcion que muestra por pantalla (u otro canal) el nodo dado
+(defun escribe-nodo-j (nodo-j &optional (canal t))
+  (format canal "~%Estado :~%")
+  (imprimir-tablero (nodo-estado nodo-j) canal)
+  (format canal "~%ultimo movimiento : ~a" *ultimo-movimiento*))
+;; 	(format canal "~%Jugador : ~a" (jugador nodo-j)))
+
+;; Funcion que inicializa *nodo-j-inicial*
+(defun crea-nodo-j-inicial (jugador)
+  (setf *estado-inicial* '(0 0 0 0 0 0 0 0 0 0 0))
+  (setf *nodo-j-inicial*
+        (crea-nodo-j :estado *estado-inicial*
+                     :jugador jugador)))
+
 (defun es-estado-final (estado)
   (let ((resultado nil))
     (cond
@@ -258,6 +227,29 @@
 
 (setf (symbol-function 'f-e-estatica) #'funcion-estatica-aleatoria)
 
+;;;;;;;;;;;;;;;
+;;; Minimax ;;;
+;;;;;;;;;;;;;;;
+
+;; Para un posible nodo del arbol devuelve sus hijos
+;(defun sucesores (nodo-j)
+;  (let ((resultado ()))
+;    (loop for movimiento in *movimientos* do
+;	 (let ((siguiente
+;		(aplica-movimiento movimiento
+;				   (estado nodo-j) (if (equal (jugador nodo-j) 'max)
+;						       *color-maquina*
+;						       *color-humano*))))
+;	   (when siguiente
+;	     (push
+;	      (crea-nodo-j
+;	       :estado siguiente
+;	       :jugador (contrario (jugador nodo-j)))
+;	      resultado))))
+;    (nreverse resultado)))
+
+(load "minimax.lisp")
+
 ;;;;;;;;;;;;;
 ;;; Juego ;;;
 ;;;;;;;;;;;;;
@@ -267,7 +259,7 @@
     (cond ((juegan-cuervos)
 	   (cond ((faltan-cuervos)
 		  ;decir que tiene que poner un cuervo en juego
-		  (format t "Tienes que poner un cuervo en juego~%")
+		  (format t "Tienes que poner un cuervo en juego.~%")
 		  (format t "Elige una posicion del tablero donde ponerlo:~%")
 		  (setf movimiento (list -1 (read))))
 		 (t
@@ -325,12 +317,52 @@
 (defun juego ()
   (let ((fin-juego nil))
     (loop until fin-juego do
+	 (format t "~%~%Nuevo turno~%")
 	 (jugar)
 	 (if (es-estado-final *estado-actual*)
 	     (setf fin-juego t)))
     (imprimir-fin-juego)))
 
-;(load "minimax.lisp")
+
+;;;;;;;;;;;;;;;;
+;;; Interfaz ;;;
+;;;;;;;;;;;;;;;;
+
+(defun menu ()
+  (let ((salir nil) (opcion 0))
+    (loop until salir do
+	 (format t "~%*** El buitre y los cuervos ***~%~%")
+	 (format t "Elige una opción:~%")
+	 (format t " 1) Humano contra Humano~%")
+	 (format t " 2) Humano contra Máquina~%")
+	 (format t " 3) Máquina contra Máquina~%")
+	 (format t " 4) Salir~%")
+	 (setf opcion (read))
+	 (cond
+	   ((= opcion 1) nil)
+	   ((= opcion 2)
+	    (let ((salir2 nil) (opcion2 0))
+	      (loop until salir2 do
+		   (format t "~%¿Con quién jugará la máquina?~%")
+		   (format t " 1) El buitre~%")
+		   (format t " 2) Los cuervos~%")
+		   (format t " 3) Atrás~%")
+		   (setf opcion2 (read))
+		   (cond
+		     ((= opcion2 1)
+		      (format t "La máquina jugará con el buitre~%")
+		      (setf *jugador-inicial* 'min)
+		      (setf *jugador-actual* 'min)
+		      (juego))
+		     ((= opcion2 2)
+		      (format t "La máquina jugará con los cuervos~%")
+		      (juego))
+		     ((= opcion2 3)
+		      (setf salir2 t))))))
+	   ((= opcion 3) nil)
+	   ((= opcion 4)
+	    (setf salir t))))
+    (format t "~%Adiós.~%")))
 
 (defun cuervos ()
   (compile-file "cuervos.lisp")
@@ -341,3 +373,4 @@
   (format t "Escribe (cuervos) para empezar.~%"))
 
 (inicio)
+;(declaim #+sbcl(sb-ext:unmuffle-conditions style-warning))
