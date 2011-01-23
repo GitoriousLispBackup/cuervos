@@ -111,6 +111,11 @@
 	    (setf resultado i))
 	   (t nil)))
     resultado))
+	
+(defun busca-cuervos (estado)
+	(loop for x from 0 to 9
+     when (equal (nth x estado) 'C)
+       collect x))
 
 (defun se-puede-mover (estado i)
   (loop for x in (nth i *lista-movimientos*)
@@ -121,6 +126,7 @@
    (loop for x in (nth i *lista-saltos*)
 	when (equal (nth x estado) 0)
 	collect x))
+;TODO tener en cuenta que solo puede saltar a una casilla si entre ambas hay colocado un cuervo.
 
 (defun quien-okupa (n estado)
   (let ((a (nth n estado)))
@@ -194,7 +200,7 @@
     (cond ((and
 	    (juega-buitre)
 	    (or
-	     (and (= (nth 0 movimiento) -3) (= (nth (nth 1 movimiento) estado) 0))
+	     (and (= (nth 0 movimiento) -3) (equal (nth (nth 1 movimiento) estado) 0))
 	     (member (nth 1 movimiento) (se-puede-mover estado-temporal (buscar-buitre estado)))
 	     (member (nth 1 movimiento) (puede-saltar estado (buscar-buitre estado)))))
 	   (if (= (nth 0 movimiento) -2) (setf (nth (buscar-buitre estado) estado-temporal) 0))
@@ -202,7 +208,7 @@
 	  ((and
 	    (juegan-cuervos)
 	    (or
-	     (and (= (nth 0 movimiento) -1) (= (nth (nth 1 movimiento) estado) 0))
+	     (and (= (nth 0 movimiento) -1) (equal (nth (nth 1 movimiento) estado) 0))
 	     (member (nth 1 movimiento) (se-puede-mover estado-temporal (nth 0 movimiento)))))
 	   (cond ((not(= (nth 0 movimiento) -1))
 		  (setf (nth (nth 0 movimiento) estado-temporal) 0)))
@@ -214,6 +220,17 @@
 ;;; Funciones estaticas ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;ideas para funcion de evaluacion estatica:
+;	1.
+;		-para el buitre, devolvera el numero de casillas a las que puede mover o saltar desde su posicion actual (buitre defensivo)
+;		-para los cuervos, devolvera el negado del numero de casillas a las que se puede mover el buitre (cuervos agresivos)
+;	2.
+;		-para el buitre, devolvera el numero de cuervos que puede comer desde su posicion actual (buitre agresivo)
+;		-para los cuervos, devolvera el numero de cuervos que estan a salvo del buitre (cuervos defensivos)
+;	3.
+;		-para el buitre, devolvera el numero de cuervos que puede comer desde su posicion actual (buitre agresivo)
+;		-para los cuervos, devolvera el negado del numero de casillas a las que se puede mover el buitre (cuervos agresivos)
+
 ;; Valores maximos y minimos para las variables alfa y beta
 (defvar *minimo-valor* -1000)
 (defvar *maximo-valor* 1000)
@@ -224,7 +241,48 @@
 ; da un valor aleatorio al nodo
 (defun funcion-estatica-aleatoria (estado turno)
   (- (random 2001) 1000))
+  
+ (defun funcion-estatica1 (estado turno)
+	(let ((resultado 0))
+		(cond ((equal turno 'MAX) ;el resultado tiene que ser el mayor posible para el jugador actual
+			(cond ((juega-buitre)
+				(setf resultado (+ resultado ((+ (length (se-puede-mover (busca-buitre))) (length (puede-saltar(busca-buitre))))))))
+			(t ((setf resultado (- resultado ((+ (length (se-puede-mover (busca-buitre))) (length (puede-saltar(busca-buitre)))))))))))
 
+		(t ( ; el turno es MIN, asi que se tiene que devolver el valor menor para el jugador actual
+			(cond ((juegan-cuervos)
+				(setf resultado (+ resultado (+ ((length (se-puede-mover (busca-buitre))) (length (puede-saltar(busca-buitre))))))))
+			(t ((setf resultado (- resultado (+ ((length (se-puede-mover (busca-buitre))) (length (puede-saltar(busca-buitre)))))))))))))
+			
+	resultado))	
+			
+(defun funcion-estatica2 (estado turno)
+	(let ((resultado 0))
+		(cond ((equal turno 'MAX)
+			(cond ((juega-buitre)
+				(setf resultado (+ resultado (length (puede-saltar(busca-buitre))))))
+			(t (+ resultado (loop for x in (busca-cuervos estado) summing (length (se-puede-mover x)))))))
+		(t (
+			(cond ((juegan-cuervos)
+				(setf resultado (+ resultado (length (puede-saltar(busca-buitre))))))
+			(t (+ resultado (loop for x in (busca-cuervos estado) summing (length (se-puede-mover x)))))))))
+		
+		resultado))
+		
+(defun funcion-estatica3 (estado turno)
+	(let ((resultado 0))
+		(cond ((equal turno 'MAX)
+			(cond  ((juega-buitre)
+				(setf resultado (+ resultado (length (puede-saltar(busca-buitre))))))
+			(t ((setf resultado (- resultado ((+ (length (se-puede-mover (busca-buitre))) (length (puede-saltar(busca-buitre)))))))))))
+
+		(t (
+			(cond (juegan-cuervos)
+				(setf resultado (+ resultado (length (puede-saltar(busca-buitre))))))
+			(t ((setf resultado (- resultado ((+ (length (se-puede-mover (busca-buitre))) (length (puede-saltar(busca-buitre))))))))))))
+	
+	resultado))
+		
 (setf (symbol-function 'f-e-estatica) #'funcion-estatica-aleatoria)
 
 ;;;;;;;;;;;;;;;
