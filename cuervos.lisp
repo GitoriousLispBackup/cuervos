@@ -167,15 +167,17 @@
   (let ((resultado nil))
     (cond
       ;quedan 3 cuervos
-      ((>= (comidos estado) 4) (setf resultado t))
+      ((>= (comidos estado) 4)
+       (format t "El buitre ha comido 4 cuervos~%")
+       (setf resultado t))
       (t
        ;el buitre no se puede mover
        ;donde esta el buitre
        (let ((i (buscar-buitre estado)))
 	 (cond ((= i -1) nil)
-	       ((> (length (se-puede-mover estado i)) 0)
+	       ((= (length (se-puede-mover estado i)) 0)
 		(setf resultado t))
-	       ((> (length (puede-saltar estado i)) 0)
+	       ((= (length (puede-saltar estado i)) 0)
 		(setf resultado t))
 	       (t nil)))))
     resultado))
@@ -190,24 +192,27 @@
 (defvar *movimientos* '(origen destino))
 ;aplica-movimiento(movimiento,estado)
 (defun aplica-movimiento (movimiento estado)
-  (let ((estado-temporal estado))
-    (cond ((and
-	    (juega-buitre)
-	    (or
-	     (and (= (nth 0 movimiento) -3) (= (nth (nth 1 movimiento) estado) 0))
-	     (member (nth 1 movimiento) (se-puede-mover estado-temporal (buscar-buitre estado)))
-	     (member (nth 1 movimiento) (puede-saltar estado (buscar-buitre estado)))))
-	   (if (= (nth 0 movimiento) -2) (setf (nth (buscar-buitre estado) estado-temporal) 0))
-	   (setf (nth (nth 1 movimiento) estado-temporal) 'B))
-	  ((and
-	    (juegan-cuervos)
-	    (or
-	     (and (= (nth 0 movimiento) -1) (= (nth (nth 1 movimiento) estado) 0))
-	     (member (nth 1 movimiento) (se-puede-mover estado-temporal (nth 0 movimiento)))))
-	   (cond ((not(= (nth 0 movimiento) -1))
-		  (setf (nth (nth 0 movimiento) estado-temporal) 0)))
-	   (setf (nth (nth 1 movimiento) estado-temporal) 'C))
-	  (t (setf estado-temporal nil)))
+  (let ((estado-temporal (loop for a in estado collect a)))
+    (if (not (equal (nth (second movimiento) estado) 0))
+	(setf estado-temporal nil)
+	(cond ((and
+		(juega-buitre)
+		(or
+		 (= (nth 0 movimiento) -3)
+		 (member (nth 1 movimiento) (se-puede-mover estado-temporal (buscar-buitre estado)))
+		 (member (nth 1 movimiento) (puede-saltar estado (buscar-buitre estado)))))
+	       (if (= (nth 0 movimiento) -2)
+		   (setf (nth (buscar-buitre estado) estado-temporal) 0))
+	       (setf (nth (nth 1 movimiento) estado-temporal) 'B))
+	      ((and
+		(juegan-cuervos)
+		(or
+		 (= (nth 0 movimiento) -1)
+		 (member (nth 1 movimiento) (se-puede-mover estado-temporal (nth 0 movimiento)))))
+	       (if (not (= (nth 0 movimiento) -1))
+		   (setf (nth (nth 0 movimiento) estado-temporal) 0))
+	       (setf (nth (nth 1 movimiento) estado-temporal) 'C))
+	      (t (setf estado-temporal nil))))
     estado-temporal))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -250,13 +255,41 @@
 
 ;debe devolver una lista de nodos con los posibles movimientos que se puede hacer
 (defun sucesores (nodo)
-  ;si es buitre
-  ;  si es el primer movimiento, buscar un sitio donde poner el buitre
-  ;  si no, se puede mover o incluso saltar
-  ;si es cuervos
-  ;  si aún quedan cuervos por poner, buscar un sitio donde ponerlos
-  ;  si no, buscar movimientos posibles de cada cuervo que haya en el tablero
-)
+  (let ((estado (nodo-estado nodo))
+	(resultado ())
+	(movimientos ()))
+    (cond ((juega-buitre)
+	   ;si es buitre
+	   ;  si es el primer movimiento, buscar un sitio donde poner el buitre
+	   ;  si no, se puede mover o incluso saltar
+	   (let ((turno (if (equal *contador-turnos* 2) -3 -2)))
+	     (loop for i from 0 to 9 do (push (list turno i) movimientos))))
+	  ((juegan-cuervos)
+	   ;si es cuervos
+	   (cond ((< *contador-turnos* 14)
+		  ;  si aún quedan cuervos por poner, buscar un sitio donde ponerlos
+		  (loop for i from 0 to 9
+		     do (push (list -1 i) movimientos)))
+		 (t
+		  ;  si no, buscar movimientos posibles de cada cuervo que haya en el tablero
+		  ;buscar los cuervos del tablero
+		  (let ((cuervos (loop for i from 0 to 9
+				      when (equal (nth i estado) 'C)
+				      collect i)))
+		    (loop for c in cuervos do
+			 (append (mapcar #'(lambda(x) (list c x)) (nth c *lista-movimientos*)) movimientos)))))))
+    (reverse movimientos)
+    ;mirar qué movimientos son posibles con aplica-movimiento
+    (loop for movimiento in movimientos do
+	 (let ((siguiente
+		(aplica-movimiento movimiento estado)))
+	   (when siguiente
+	     (push
+	      (crea-nodo-j
+	       :estado siguiente
+	       :jugador (contrario (nodo-jugador nodo)))
+	      resultado))))
+    (reverse resultado)))
 
 (load "minimax.lisp")
 
@@ -291,7 +324,12 @@
 
 ;TODO
 (defun jugar-maquina ()
-)
+  ;TODO crear un nodo con el estado actual y tal
+  ;TODO llamar a minimax con el nodo creado
+  ;TODO devolver el nuevo estado que devuelve minimax
+  (let* ((nodo (crea-nodo-j :estado *estado-actual* :jugador *jugador-actual*))
+	(profundidad 3))
+    (nodo-estado (minimax-a-b nodo profundidad))))
 
 (defun jugar ()
   ;imprimir el estado actual
@@ -306,8 +344,7 @@
 		(setf movimiento (jugar-humano))
 		(setf nuevo-estado (aplica-movimiento movimiento *estado-actual*))))
 	  (t
-	   (setf movimiento (jugar-maquina))
-	   (setf nuevo-estado (aplica-movimiento movimiento *estado-actual*))))
+	   (setf nuevo-estado (jugar-maquina))))
     ;ejecutar el movimiento, lo hacemos arriba ya
     ;(setf nuevo-estado (aplica-movimiento movimiento *estado-actual*))
     ;actualizar jugador actual, estado actual y contador de turnos
@@ -317,7 +354,7 @@
     (setf *estado-actual* nuevo-estado)))
 
 (defun imprimir-fin-juego ()
-  (format t "*** ¡El juego ha terminado! ***")
+  (format t "*** ¡El juego ha terminado! ***~%")
   (imprimir-tablero)
   (setf *contador-turnos* (1- *contador-turnos*))
   (if (juegan-cuervos)
@@ -375,8 +412,8 @@
     (format t "~%Adiós.~%")))
 
 (defun cuervos ()
-  (compile-file "cuervos.lisp")
-  (load "cuervos")
+;  (compile-file "cuervos.lisp")
+;  (load "cuervos")
   (menu))
 
 (defun inicio ()
