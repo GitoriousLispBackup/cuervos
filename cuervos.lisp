@@ -181,9 +181,7 @@
        ;donde esta el buitre
        (let ((i (buscar-buitre estado)))
 	 (cond ((= i -1) nil)
-	       ((= (length (se-puede-mover estado i)) 0)
-		(setf resultado t))
-	       ((= (length (puede-saltar estado i)) 0)
+	       ((and (= (length (se-puede-mover estado i)) 0) (= (length (puede-saltar estado i)) 0))
 		(setf resultado t))
 	       (t nil)))))
     resultado))
