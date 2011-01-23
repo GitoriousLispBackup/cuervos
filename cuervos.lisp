@@ -126,9 +126,8 @@
    (loop for x in (nth i *lista-saltos*)
 	when (and
 	      (equal (nth x estado) 0) ;destino vacio
-	      (not (equal (nth (aref *matriz-saltos* i x) estado) 0)));hay alguien en el salto
+	      (equal (nth (aref *matriz-saltos* i x) estado) 'C));hay un cuervo en el salto
 	collect x))
-;TODO tener en cuenta que solo puede saltar a una casilla si entre ambas hay colocado un cuervo.
 
 (defun quien-okupa (n estado)
   (let ((a (nth n estado)))
@@ -141,6 +140,7 @@
   (format canal "     ~a         ~a~%" (quien-okupa 5 estado) (quien-okupa 6 estado))
   (format canal "          ~a~%~%" (quien-okupa 7 estado))
   (format canal "  ~a                ~a~%" (quien-okupa 8 estado) (quien-okupa 9 estado))
+  (format canal "El buitre ha comido ~a cuervos~%" (first (last estado)))
   (format canal "Jugador siguiente: ~a~%" *jugador-actual*))
 
 ;;;;;;;;;;;;;;;;;;;;
@@ -196,19 +196,30 @@
 (defvar *movimientos* '(origen destino))
 ;aplica-movimiento(movimiento,estado)
 (defun aplica-movimiento (movimiento estado)
-  (let ((estado-temporal (loop for a in estado collect a)))
+  (let ((estado-temporal (loop for a in estado collect a))
+	(ok nil))
     (if (not (equal (nth (second movimiento) estado) 0))
 	(setf estado-temporal nil)
-	(cond ((and
-		(juega-buitre)
-		(or
-		 (= (nth 0 movimiento) -3)
-		 (member (nth 1 movimiento) (se-puede-mover estado-temporal (buscar-buitre estado)))
-		 (member (nth 1 movimiento) (puede-saltar estado (buscar-buitre estado)))))
-	       (if (= (nth 0 movimiento) -2)
-		   (setf (nth (buscar-buitre estado) estado-temporal) 0))
-	       (setf (nth (nth 1 movimiento) estado-temporal) 'B))
-	      ((and
+	(cond ((juega-buitre)
+	       (if (= (nth 0 movimiento) -3) ;poner el buitre
+		   (setf ok t) 
+		   (let* ((buitre (buscar-buitre estado))
+			  (movimientos (se-puede-mover estado-temporal buitre))
+			  (saltos (puede-saltar estado buitre))
+			  (destino nil)
+			  (cuervo nil))
+		     (cond
+		       ((member (second movimiento) movimientos) ;mover el buitre
+			(setf ok t))
+		       ((member (second movimiento) saltos) ;saltar un cuervo
+			(setf destino (first (member (second movimiento) saltos)))
+			(setf cuervo (aref *matriz-saltos* buitre destino))
+			(setf (nth cuervo estado-temporal) 0) ;poner a cero donde estaba el cuervo
+			(setf (nth 10 estado-temporal) (1+ (nth 10 estado-temporal))) ;aumentar el contador de cuervos comidos
+			(setf ok t)))))
+	       (if ok (setf (nth (nth 1 movimiento) estado-temporal) 'B)) ;poner el cuervo en el destino
+	       (if (and ok (= (nth 0 movimiento) -2)) (setf (nth (buscar-buitre estado) estado-temporal) 0))) ;si ha sido un movimiento, poner donde estaba el cuervo a 0
+	      ((and ;TODO quiza hay aquí un problema cuando hay que mover cuervos
 		(juegan-cuervos)
 		(or
 		 (= (nth 0 movimiento) -1)
@@ -310,6 +321,7 @@
 ;    (nreverse resultado)))
 
 ;debe devolver una lista de nodos con los posibles movimientos que se puede hacer
+;TODO quiza hay aqui un problema cuando hay que mover cuervos
 (defun sucesores (nodo)
   (let ((estado (nodo-estado nodo))
 	(resultado ())
