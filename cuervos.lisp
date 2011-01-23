@@ -124,7 +124,9 @@
 
  (defun puede-saltar (estado i)
    (loop for x in (nth i *lista-saltos*)
-	when (equal (nth x estado) 0)
+	when (and
+	      (equal (nth x estado) 0) ;destino vacio
+	      (not (equal (nth (aref *matriz-saltos* i x) estado) 0)));hay alguien en el salto
 	collect x))
 ;TODO tener en cuenta que solo puede saltar a una casilla si entre ambas hay colocado un cuervo.
 
