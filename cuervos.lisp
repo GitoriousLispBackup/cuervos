@@ -100,7 +100,7 @@
   (evenp *contador-turnos*))
 
 (defun faltan-cuervos ()
-  (< *cuervos-jugados* 14))
+  (< *contador-turnos* 14))
 
 (defun buscar-buitre (estado)
   (let ((resultado -1))
@@ -137,9 +137,7 @@
 
 (defun imprimir-tablero (&optional (estado *estado-actual*) (canal t))
   (format canal "          ~a~%~%" (quien-okupa 0 estado))
-  (format canal " ~a     ~a     ~a     ~a~%~%"
-	  (quien-okupa 1 estado) (quien-okupa 2 estado)
-	  (quien-okupa 3 estado) (quien-okupa 4 estado))
+  (format canal " ~a     ~a     ~a     ~a~%~%" (quien-okupa 1 estado) (quien-okupa 2 estado) (quien-okupa 3 estado) (quien-okupa 4 estado))
   (format canal "     ~a         ~a~%" (quien-okupa 5 estado) (quien-okupa 6 estado))
   (format canal "          ~a~%~%" (quien-okupa 7 estado))
   (format canal "  ~a                ~a~%" (quien-okupa 8 estado) (quien-okupa 9 estado))
@@ -422,7 +420,7 @@
 (defun juego ()
   (let ((fin-juego nil))
     (loop until fin-juego do
-	 (format t "~%~%Nuevo turno~%")
+	 (format t "~%~%Turno ~a~%" *contador-turnos*)
 	 (jugar)
 	 (if (es-estado-final *estado-actual*)
 	     (setf fin-juego t)))
