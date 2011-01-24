@@ -271,31 +271,31 @@
 		resultado))
 			
 (defun funcion-estatica2 (estado turno)
-	(let ((resultado 0))
-		(cond ((equal turno 'MAX)
-			(cond ((juega-buitre)
-				(setf resultado (+ resultado (length (puede-saltar(busca-buitre))))))
-			(t (+ resultado (loop for x in (busca-cuervos estado) summing (length (se-puede-mover x)))))))
-		(t (
-			(cond ((juegan-cuervos)
-				(setf resultado (+ resultado (length (puede-saltar(busca-buitre))))))
-			(t (+ resultado (loop for x in (busca-cuervos estado) summing (length (se-puede-mover x)))))))))
-		
-		resultado))
+  (let ((resultado 0))
+    (cond ((equal turno 'MAX)
+	   (cond ((juega-buitre)
+		  (setf resultado (+ resultado (length (puede-saltar estado (busca-buitre estado))))))
+		 (t (+ resultado (loop for x in (busca-cuervos estado) summing (length (se-puede-mover estado x)))))))
+	  (t
+	   (cond ((juegan-cuervos)
+		  (setf resultado (+ resultado (length (puede-saltar estado (busca-buitre estado))))))
+		 (t (+ resultado (loop for x in (busca-cuervos estado) summing (length (se-puede-mover estado x))))))))
+    resultado))
 		
 (defun funcion-estatica3 (estado turno)
-	(let ((resultado 0))
-		(cond ((equal turno 'MAX)
-			(cond  ((juega-buitre)
-				(setf resultado (+ resultado (length (puede-saltar(busca-buitre))))))
-			(t ((setf resultado (- resultado ((+ (length (se-puede-mover (busca-buitre))) (length (puede-saltar(busca-buitre)))))))))))
-
-		(t (
-			(cond (juegan-cuervos)
-				(setf resultado (+ resultado (length (puede-saltar(busca-buitre))))))
-			(t ((setf resultado (- resultado ((+ (length (se-puede-mover (busca-buitre))) (length (puede-saltar(busca-buitre))))))))))))
-	
-	resultado))
+  (let ((resultado 0))
+    (cond ((equal turno 'MAX)
+	   (cond ((juega-buitre)
+		  (setf resultado (+ resultado (length (puede-saltar estado (busca-buitre estado))))))
+		 (t (setf resultado (- resultado (+ (length (se-puede-mover estado (busca-buitre estado)))
+						    (length (puede-saltar(busca-buitre)))))))))
+	  (t
+	   (cond ((juegan-cuervos)
+		  (setf resultado (+ resultado (length (puede-saltar estado (busca-buitre estado))))))
+		 (t
+		  (setf resultado (- resultado (+ (length (se-puede-mover estado (busca-buitre estado)))
+						  (length (puede-saltar estado (busca-buitre estado))))))))))
+    resultado))
 		
 (setf (symbol-function 'f-e-estatica) #'funcion-estatica-aleatoria)
 
