@@ -135,11 +135,12 @@
 	  (t a))))
 
 (defun imprimir-tablero (&optional (estado *estado-actual*) (canal t))
-  (format canal "          ~a~%~%" (quien-okupa 0 estado))
+  (format canal "~a~%" estado)
+  (format canal "~%          ~a~%~%" (quien-okupa 0 estado))
   (format canal " ~a     ~a     ~a     ~a~%~%" (quien-okupa 1 estado) (quien-okupa 2 estado) (quien-okupa 3 estado) (quien-okupa 4 estado))
   (format canal "     ~a         ~a~%" (quien-okupa 5 estado) (quien-okupa 6 estado))
   (format canal "          ~a~%~%" (quien-okupa 7 estado))
-  (format canal "  ~a                ~a~%" (quien-okupa 8 estado) (quien-okupa 9 estado))
+  (format canal "  ~a                ~a~%~%" (quien-okupa 8 estado) (quien-okupa 9 estado))
   (format canal "El buitre ha comido ~a cuervos~%" (first (last estado)))
   (format canal "Jugador siguiente: ~a~%" *jugador-actual*))
 
@@ -222,11 +223,11 @@
 	      ((and ;TODO quiza hay aquí un problema cuando hay que mover cuervos
 		(juegan-cuervos)
 		(or
-		 (= (nth 0 movimiento) -1)
-		 (member (nth 1 movimiento) (se-puede-mover estado-temporal (nth 0 movimiento)))))
-	       (if (not (= (nth 0 movimiento) -1))
-		   (setf (nth (nth 0 movimiento) estado-temporal) 0))
-	       (setf (nth (nth 1 movimiento) estado-temporal) 'C))
+		 (= (first movimiento) -1)
+		 (member (second movimiento) (se-puede-mover estado-temporal (first movimiento)))))
+	       (if (not (= (first movimiento) -1))
+		   (setf (nth (first movimiento) estado-temporal) 0))
+	       (setf (nth (second movimiento) estado-temporal) 'C))
 	      (t (setf estado-temporal nil))))
     estado-temporal))
 
