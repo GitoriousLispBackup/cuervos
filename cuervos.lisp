@@ -94,8 +94,8 @@
 (defun crea-nodo-inicial ()
   (setf *nodo-actual*
         (crea-nodo :estado '(0 0 0 0 0 0 0 0 0 0 0)
-                     :jugador *jugador-inicial*
-		     :contador-turnos 1)))
+		   :jugador *jugador-inicial*
+		   :contador-turnos 1)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Funciones auxiliares ;;;
@@ -128,7 +128,7 @@
 	    (setf resultado i))
 	   (t nil)))
     resultado))
-	
+
 (defun busca-cuervos (estado)
   (loop for x from 0 to 9
      when (equal (nth x estado) 'C)
@@ -137,14 +137,14 @@
 (defun se-puede-mover (estado i)
   (loop for x in (nth i *lista-movimientos*)
      when (equal (nth x estado) 0)
-       collect x))
+     collect x))
 
- (defun puede-saltar (estado i)
-   (loop for x in (nth i *lista-saltos*)
-	when (and
-	      (equal (nth x estado) 0) ;destino vacio
-	      (equal (nth (aref *matriz-saltos* i x) estado) 'C));hay un cuervo en el salto
-	collect x))
+(defun puede-saltar (estado i)
+  (loop for x in (nth i *lista-saltos*)
+     when (and
+	   (equal (nth x estado) 0) ;destino vacio
+	   (equal (nth (aref *matriz-saltos* i x) estado) 'C)) ;hay un cuervo en el salto
+     collect x))
 
 (defun quien-okupa (n estado)
   (let ((a (nth n estado)))
@@ -207,12 +207,13 @@
 	     (cond
 	       ((member (second movimiento) movimientos) ;mover el buitre
 		(setf ok t))
-	       ((member (second movimiento) saltos) ;saltar un cuervo
-		(setf destino (first (member (second movimiento) saltos))); no es lo mismo que (second movimiento)?
-		(setf cuervo (aref *matriz-saltos* buitre destino))
+	       ((member (second movimiento) saltos) ;comer un cuervo
+		(setf cuervo (aref *matriz-saltos* buitre (second movimiento))) ;cuervo que se come
 		(setf (nth cuervo estado-temporal) 0) ;poner a cero donde estaba el cuervo
 		(setf (nth 10 estado-temporal) (1+ (nth 10 estado-temporal)))
-		(setf ok t)))
+		(setf ok t))
+	       (t
+		(setf estado-temporal nil)))
 	     (when ok
 	       (setf (nth (second movimiento) estado-temporal) 'B)
 	       (setf (nth buitre estado-temporal) 0))))
@@ -254,8 +255,8 @@
 		(cond ((equal turno 'MAX) ;el resultado tiene que ser el mayor posible para el jugador actual
 			(cond ((juega-buitre)
 				(setf resultado (+ resultado
-						   (+ (length (se-puede-mover estado (busca-buitre estado)))
-						      (length (puede-saltar estado (busca-buitre estado)))))))
+						   (length (se-puede-mover estado (busca-buitre estado)))
+						   (length (puede-saltar estado (busca-buitre estado))))))
 			      (t (setf resultado (- resultado
 						    (+ (length (se-puede-mover estado (busca-buitre estado)))
 						       (length (puede-saltar estado (busca-buitre estado)))))))))
@@ -263,8 +264,8 @@
 		      (t ; el turno es MIN, asi que se tiene que devolver el valor menor para el jugador actual
 		       (cond ((juegan-cuervos)
 			      (setf resultado (+ resultado
-						 (+ (length (se-puede-mover estado (busca-buitre estado)))
-						    (length (puede-saltar estado (busca-buitre estado)))))))
+						 (length (se-puede-mover estado (busca-buitre estado)))
+						 (length (puede-saltar estado (busca-buitre estado))))))
 			     (t (setf resultado (- resultado
 						   (+ (length (se-puede-mover estado (busca-buitre estado)))
 						      (length (puede-saltar estado (busca-buitre estado))))))))))
@@ -350,18 +351,18 @@
 			 (append (mapcar #'(lambda(x) (list c x)) (nth c *lista-movimientos*)) movimientos)))))))
     (reverse movimientos)
     ;mirar qué movimientos son posibles con aplica-movimiento
-    (format t "Movimientos posibles: ~a~%" (length movimientos))
     (loop for movimiento in movimientos do
 	 (let ((siguiente
 		(aplica-movimiento movimiento estado)))
 	   (when siguiente
-	     (format t "Posible siguiente: ~a~%" siguiente)
+	     (format t "Posible siguiente: ~a Mov:~a~%" siguiente movimiento)
 	     (push
 	      (crea-nodo
 	       :estado siguiente
 	       :jugador (contrario (nodo-jugador nodo))
 	       :contador-turnos (1+ (nodo-contador-turnos nodo)))
 	      resultado))))
+    (format t "Movimientos posibles: ~a~%" (length resultado))
     (reverse resultado)))
 
 (load "minimax.lisp")
@@ -400,6 +401,7 @@
   ;TODO crear un nodo con el estado actual y tal
   ;TODO llamar a minimax con el nodo creado
   ;TODO devolver el nuevo estado que devuelve minimax
+  (format t "Estado actual: ~a~%" (nodo-estado *nodo-actual*))
   (let* ((profundidad 3))
     (minimax-a-b *nodo-actual* profundidad)))
 
@@ -500,4 +502,5 @@
   (format t "Escribe (cuervos) para empezar.~%"))
 
 (inicio)
+(cuervos)
 ;(declaim #+sbcl(sb-ext:unmuffle-conditions style-warning))
