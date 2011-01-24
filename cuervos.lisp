@@ -46,7 +46,7 @@
 				  (nil nil nil nil nil nil t t nil nil))))
 ;a donde nos podemos mover en forma de lista, indice en 0
 (defvar *lista-movimientos*)
-(setf *lista-movimientos* '((2 3) (2 5) (0 2 3 5) (0 2 6 4) (3 6) (1 2 7 8) (3 4 7 9) (5 6 8 9) (5 7) (6 7)))
+(setf *lista-movimientos* '((2 3) (2 5) (0 1 3 5) (0 2 4 6) (3 6) (1 2 7 8) (3 4 7 9) (5 6 8 9) (5 7) (6 7)))
 ;para saber saltos legales, se define una matriz 10x10 de nil y el numero de la casilla que pasa por encima
 ;   1 2 3 4 5 6 7 8 9 10
 ; 1           t t
@@ -84,11 +84,11 @@
   valor) ;valor de la funcion estatica
 
 ;; Funcion que muestra por pantalla (u otro canal) el nodo dado
-(defun escribe-nodo (nodo &optional (canal t))
-  (format canal "~%Estado :~%")
-  (imprimir-tablero (nodo-estado nodo) canal)
-  (format canal "~%ultimo movimiento : ~a" *ultimo-movimiento*))
-;; 	(format canal "~%Jugador : ~a" (jugador nodo-j)))
+(defun escribe-nodo (nodo &optional (canal t) profundidad)
+  (format canal "Estado del nodo: ~a~%" (nodo-estado nodo))
+  (format canal "Jugador del nodo: ~a~%" (nodo-jugador nodo))
+  (format canal "Turnos del nodo: ~a~%" (nodo-contador-turnos nodo))
+  (imprimir-tablero nodo canal))
 
 ;; Funcion que inicializa *nodo-inicial*
 (defun crea-nodo-inicial ()
@@ -153,7 +153,6 @@
 
 (defun imprimir-tablero (&optional (nodo *nodo-actual*) (canal t))
   (let ((estado (nodo-estado nodo)))
-    (format canal "~a~%" estado)
     (format canal "~%          ~a~%~%" (quien-okupa 0 estado))
     (format canal " ~a     ~a     ~a     ~a~%~%" (quien-okupa 1 estado) (quien-okupa 2 estado) (quien-okupa 3 estado) (quien-okupa 4 estado))
     (format canal "     ~a         ~a~%" (quien-okupa 5 estado) (quien-okupa 6 estado))
@@ -171,7 +170,6 @@
     (cond
       ;quedan 3 cuervos
       ((>= (comidos estado) 4)
-       (format t "El buitre ha comido 4 cuervos~%")
        (setf resultado t))
       (t
        ;el buitre no se puede mover
@@ -322,9 +320,6 @@
 ;    (nreverse resultado)))
 
 ;debe devolver una lista de nodos con los posibles movimientos que se puede hacer
-;TODO quiza hay aqui un problema cuando hay que mover cuervos
-;TODO para el buitre genera estados iguales al anterior
-;TODO para el cuervo, cuando toca mover no devuelve estados?
 (defun sucesores (nodo)
   (let ((estado (nodo-estado nodo))
 	(resultado ())
@@ -344,25 +339,24 @@
 		 (t
 		  ;  si no, buscar movimientos posibles de cada cuervo que haya en el tablero
 		  ;buscar los cuervos del tablero
-		  (let ((cuervos (loop for i from 0 to 9
-				      when (equal (nth i estado) 'C)
-				      collect i)))
+		  (let ((cuervos (busca-cuervos (nodo-estado nodo))))
 		    (loop for c in cuervos do
-			 (append (mapcar #'(lambda(x) (list c x)) (nth c *lista-movimientos*)) movimientos)))))))
+			 (setf movimientos
+			       (append movimientos (mapcar #'(lambda(x) (list c x)) (nth c *lista-movimientos*))))))))))
     (reverse movimientos)
     ;mirar qué movimientos son posibles con aplica-movimiento
     (loop for movimiento in movimientos do
 	 (let ((siguiente
 		(aplica-movimiento movimiento estado)))
 	   (when siguiente
-	     (format t "Posible siguiente: ~a Mov:~a~%" siguiente movimiento)
+;	     (format t "Posible siguiente: ~a Mov:~a~%" siguiente movimiento)
 	     (push
 	      (crea-nodo
 	       :estado siguiente
 	       :jugador (contrario (nodo-jugador nodo))
 	       :contador-turnos (1+ (nodo-contador-turnos nodo)))
 	      resultado))))
-    (format t "Movimientos posibles: ~a~%" (length resultado))
+;    (format t "Movimientos posibles: ~a~%" (length resultado))
     (reverse resultado)))
 
 (load "minimax.lisp")
@@ -401,7 +395,6 @@
   ;TODO crear un nodo con el estado actual y tal
   ;TODO llamar a minimax con el nodo creado
   ;TODO devolver el nuevo estado que devuelve minimax
-  (format t "Estado actual: ~a~%" (nodo-estado *nodo-actual*))
   (let* ((profundidad 3))
     (minimax-a-b *nodo-actual* profundidad)))
 
@@ -439,8 +432,8 @@
   (format t "*** ¡El juego ha terminado! ***~%")
   (imprimir-tablero)
   (if (oddp (1- (nodo-contador-turnos *nodo-actual*)))
-      (format t "¡Los cuervos ganan!")
-      (format t "¡El buitre gana!")))
+      (format t "¡Los cuervos ganan!~%~%")
+      (format t "¡El buitre gana!~%~%")))
 
 (defun juego ()
   (crea-nodo-inicial)

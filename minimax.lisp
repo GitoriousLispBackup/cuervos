@@ -41,15 +41,19 @@
 ;    mejor-sucesor))
 
 ;; Algoritmo MINIMAX con poda ALFA-BETA
-(defun minimax-a-b (nodo-j profundidad
+(defun minimax-a-b (nodo profundidad
 		    &optional (alfa *minimo-valor*)
 		    (beta *maximo-valor*))
-  (if (or (es-estado-final (nodo-estado nodo-j)) (= profundidad 0))
-      (crea-nodo :valor (f-e-estatica (nodo-estado nodo-j) (nodo-jugador nodo-j)))
-      (let ((sucesores (sucesores nodo-j)))
+  (if (or
+       (es-estado-final (nodo-estado nodo))
+       (= profundidad 0))
+      (crea-nodo :valor (f-e-estatica (nodo-estado nodo) (nodo-jugador nodo)))
+      (let ((sucesores (sucesores nodo)))
         (if (null sucesores)
-            (crea-nodo :valor (f-e-estatica (nodo-estado nodo-j) (nodo-jugador nodo-j)))
-            (if (eq (nodo-jugador nodo-j) 'max)
+	    (progn
+	     (format t "Sucesores vacío~%")
+	     (crea-nodo :valor (f-e-estatica (nodo-estado nodo) (nodo-jugador nodo))))
+            (if (eq (nodo-jugador nodo) 'max)
                 (maximizador-a-b
                  (sort sucesores #'> :key (lambda (nodo) (f-e-estatica (nodo-estado nodo) 'min)))
                  profundidad alfa beta)
