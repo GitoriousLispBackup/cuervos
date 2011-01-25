@@ -144,11 +144,15 @@
      collect x))
 
 (defun se-puede-mover (estado i)
+  (when (< i 0)
+    (return))
   (loop for x in (nth i *lista-movimientos*)
      when (equal (nth x estado) 0)
      collect x))
 
 (defun puede-saltar (estado i)
+  (when (< i 0)
+    (return))
   (loop for x in (nth i *lista-saltos*)
      when (and
 	   (equal (nth x estado) 0) ;destino vacio
@@ -263,77 +267,76 @@
 (defun funcion-estatica-aleatoria (estado turno)
   (- (random 2001) 1000))
   
- (defun funcion-estatica1 (estado turno)
-	(let ((resultado 0))
-		(cond ((es-estado-ganador estado turno 'MAX) (return *maximo-valor*))
-			((es-estado-ganador estado turno 'MIN) (return *minimo-valor*))
-			((equal turno 'MAX) ;el resultado tiene que ser el mayor posible para el jugador actual
-				(cond ((juega-buitre :estado estado)
-					(setf resultado (+ resultado
-							(length (se-puede-mover estado (busca-buitre estado)))
-							(length (puede-saltar estado (busca-buitre estado))))))
-			      (t (setf resultado (- resultado
-						    (+ (length (se-puede-mover estado (busca-buitre estado)))
-						       (length (puede-saltar estado (busca-buitre estado)))))))))
+(defun funcion-estatica1 (estado turno)
+  (let ((resultado 0))
+    (cond ((es-estado-ganador estado turno 'MAX) (return *maximo-valor*))
+	  ((es-estado-ganador estado turno 'MIN) (return *minimo-valor*))
+	  ((equal turno 'MAX) ;el resultado tiene que ser el mayor posible para el jugador actual
+	   (cond ((juega-buitre :estado estado)
+		  (setf resultado (+ resultado
+				     (length (se-puede-mover estado (buscar-buitre estado)))
+				     (length (puede-saltar estado (buscar-buitre estado))))))
+		 (t (setf resultado (- resultado
+				       (+ (length (se-puede-mover estado (buscar-buitre estado)))
+					  (length (puede-saltar estado (buscar-buitre estado)))))))))
+	  
+	  (t ; el turno es MIN, asi que se tiene que devolver el valor menor para el jugador actual
+	   (cond ((juegan-cuervos :estado estado)
+		  (setf resultado (+ resultado
+				     (length (se-puede-mover estado (buscar-buitre estado)))
+				     (length (puede-saltar estado (buscar-buitre estado))))))
+		 (t (setf resultado (- resultado
+				       (+ (length (se-puede-mover estado (buscar-buitre estado)))
+					  (length (puede-saltar estado (buscar-buitre estado))))))))))
+    resultado))
 
-		      (t ; el turno es MIN, asi que se tiene que devolver el valor menor para el jugador actual
-		       (cond ((juegan-cuervos :estado estado)
-			      (setf resultado (+ resultado
-						 (length (se-puede-mover estado (busca-buitre estado)))
-						 (length (puede-saltar estado (busca-buitre estado))))))
-			     (t (setf resultado (- resultado
-						   (+ (length (se-puede-mover estado (busca-buitre estado)))
-						      (length (puede-saltar estado (busca-buitre estado))))))))))
-		resultado))
-			
 (defun funcion-estatica2 (estado turno)
   (let ((resultado 0))
     (cond ((es-estado-ganador estado turno 'MAX) (return *maximo-valor*))
-		((es-estado-ganador estado turno 'MIN) (return *minimo-valor*))
-		((equal turno 'MAX)
-			(cond ((juega-buitre :estado estado)
-			(setf resultado (+ resultado (length (puede-saltar estado (busca-buitre estado))))))
+	  ((es-estado-ganador estado turno 'MIN) (return *minimo-valor*))
+	  ((equal turno 'MAX)
+	   (cond ((juega-buitre :estado estado)
+		  (setf resultado (+ resultado (length (puede-saltar estado (buscar-buitre estado))))))
 		 (t (+ resultado (loop for x in (busca-cuervos estado) summing (length (se-puede-mover estado x)))))))
 	  (t
 	   (cond ((juegan-cuervos :estado estado)
-		  (setf resultado (+ resultado (length (puede-saltar estado (busca-buitre estado))))))
+		  (setf resultado (+ resultado (length (puede-saltar estado (buscar-buitre estado))))))
 		 (t (+ resultado (loop for x in (busca-cuervos estado) summing (length (se-puede-mover estado x))))))))
     resultado))
-		
+
 (defun funcion-estatica3 (estado turno)
   (let ((resultado 0))
     (cond ((es-estado-ganador estado turno 'MAX) (return *maximo-valor*))
-		((es-estado-ganador estado turno 'MIN) (return *minimo-valor*))
-		((equal turno 'MAX)
-			(cond ((juega-buitre :estado estado)
-		  (setf resultado (+ resultado (length (puede-saltar estado (busca-buitre estado))))))
-		 (t (setf resultado (- resultado (+ (length (se-puede-mover estado (busca-buitre estado)))
-						    (length (puede-saltar(busca-buitre)))))))))
+	  ((es-estado-ganador estado turno 'MIN) (return *minimo-valor*))
+	  ((equal turno 'MAX)
+	   (cond ((juega-buitre :estado estado)
+		  (setf resultado (+ resultado (length (puede-saltar estado (buscar-buitre estado))))))
+		 (t (setf resultado (- resultado (+ (length (se-puede-mover estado (buscar-buitre estado)))
+						    (length (puede-saltar estado (buscar-buitre estado)))))))))
 	  (t
 	   (cond ((juegan-cuervos :estado estado)
-		  (setf resultado (+ resultado (length (puede-saltar estado (busca-buitre estado))))))
+		  (setf resultado (+ resultado (length (puede-saltar estado (buscar-buitre estado))))))
 		 (t
-		  (setf resultado (- resultado (+ (length (se-puede-mover estado (busca-buitre estado)))
-						  (length (puede-saltar estado (busca-buitre estado))))))))))
+		  (setf resultado (- resultado (+ (length (se-puede-mover estado (buscar-buitre estado)))
+						  (length (puede-saltar estado (buscar-buitre estado))))))))))
     resultado))
 	
 (defun funcion-estatica4 (estado turno)
-		(let ((resultado 0))
-			(cond ((es-estado-ganador estado turno 'MAX) (return *maximo-valor*))
-				((es-estado-ganador estado turno 'MIN) (return *minimo-valor*))
-				((equal turno 'MAX)
-					(cond ((juega-buitre :estado estado)
+  (let ((resultado 0))
+    (cond ((es-estado-ganador estado turno 'MAX) (return *maximo-valor*))
+	  ((es-estado-ganador estado turno 'MIN) (return *minimo-valor*))
+	  ((equal turno 'MAX)
+	   (cond ((juega-buitre :estado estado)
 						(setf resultado (+ resultado
-							(length (se-puede-mover estado (busca-buitre estado)))
-							(length (puede-saltar estado (busca-buitre estado))))))
-					(t (+ resultado (loop for x in (busca-cuervos estado) summing (length (se-puede-mover estado x)))))))
-				(t (cond ((juegan-cuervos :estado estado)
-						(setf resultado (+ resultado
-							(length (se-puede-mover estado (busca-buitre estado)))
-							(length (puede-saltar estado (busca-buitre estado))))))
-					(t (+ resultado (loop for x in (busca-cuervos estado) summing (length (se-puede-mover estado x))))))))
-			resultado))
-					
+								   (length (se-puede-mover estado (buscar-buitre estado)))
+								   (length (puede-saltar estado (buscar-buitre estado))))))
+		 (t (+ resultado (loop for x in (busca-cuervos estado) summing (length (se-puede-mover estado x)))))))
+	  (t (cond ((juegan-cuervos :estado estado)
+		    (setf resultado (+ resultado
+				       (length (se-puede-mover estado (buscar-buitre estado)))
+				       (length (puede-saltar estado (buscar-buitre estado))))))
+		   (t (+ resultado (loop for x in (busca-cuervos estado) summing (length (se-puede-mover estado x))))))))
+    resultado))
 		
 (setf (symbol-function 'f-e-estatica) #'funcion-estatica-aleatoria)
 (setf (symbol-function 'f-e-estatica-max) #'funcion-estatica-aleatoria)
