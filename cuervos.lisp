@@ -252,6 +252,8 @@
 (defvar *medio-valor* 0)
 
 (defun f-e-estatica (estado turno))
+(defun f-e-estatica-max (estado turno))
+(defun f-e-estatica-min (estado turno))
 
 ; da un valor aleatorio al nodo
 (defun funcion-estatica-aleatoria (estado turno)
@@ -306,6 +308,8 @@
     resultado))
 		
 (setf (symbol-function 'f-e-estatica) #'funcion-estatica-aleatoria)
+(setf (symbol-function 'f-e-estatica-max) #'funcion-estatica-aleatoria)
+(setf (symbol-function 'f-e-estatica-min) #'funcion-estatica-aleatoria)
 
 ;;;;;;;;;;;;;;;
 ;;; Minimax ;;;
@@ -404,6 +408,9 @@
   ;TODO crear un nodo con el estado actual y tal
   ;TODO llamar a minimax con el nodo creado
   ;TODO devolver el nuevo estado que devuelve minimax
+  (if (equal (nodo-jugador *nodo-actual*) 'max)
+      (setf (symbol-function 'f-e-estatica) #'f-e-estatica-max)
+      (setf (symbol-function 'f-e-estatica) #'f-e-estatica-min))
   (let* ((profundidad 3))
     (minimax-a-b *nodo-actual* profundidad)))
 
@@ -494,7 +501,43 @@
 		      (juego))
 		     ((= opcion2 3)
 		      (setf salir2 t))))))
-	   ((= opcion 3) nil)
+	   ((= opcion 3)
+	    (setf *max-humano* nil)
+	    (setf *min-humano* nil)
+	    (let ((salir2 nil) (opcion2 0) (ia1 0) (ia2 0))
+	      (defun ia-a-texto (ia)
+		(cond ((= ia 0) "aleatoria")
+		      ((= ia 1) "agresiva")
+		      ((= ia 2) "defensiva")))
+	      (defun cambiar-ia1 ()
+		(setf ia1 (mod (1+ ia1) 3))
+		(cond ((= ia1 0)
+		       (setf (symbol-function 'f-e-estatica-max) #'funcion-estatica-aleatoria))
+		      ((= ia1 1)
+		       (setf (symbol-function 'f-e-estatica-max) #'funcion-estatica1))
+		      ((= ia1 2)
+		       (setf (symbol-function 'f-e-estatica-max) #'funcion-estatica2))))
+	      (defun cambiar-ia2 ()
+		(setf ia2 (mod (1+ ia2) 3))
+		(cond ((= ia2 0)
+		       (setf (symbol-function 'f-e-estatica-min) #'funcion-estatica-aleatoria))
+		      ((= ia2 1)
+		       (setf (symbol-function 'f-e-estatica-min) #'funcion-estatica3))
+		      ((= ia2 2)
+		       (setf (symbol-function 'f-e-estatica-min) #'funcion-estatica1))))
+	      (loop until salir2 do
+		   (format t "** Partida Máquina contra Máquina **~%")
+		   (format t " 1) IA Máquina 1 (aleatoria, agresiva, defensiva): ~a~%" (ia-a-texto ia1))
+		   (format t " 2) IA Máquina 2 (aleatoria, agresiva, defensiva): ~a~%" (ia-a-texto ia2))
+		   (format t " 3) ¡Jugar!~%~%")
+		   (format t " 4) Atrás~%")
+		   (setf opcion2 (read))
+		   (cond
+		     ((= opcion2 1) (cambiar-ia1))
+		     ((= opcion2 2) (cambiar-ia2))
+		     ((= opcion2 3) (juego))
+		     ((= opcion2 4)
+		      (setf salir2 t))))))
 	   ((= opcion 4)
 	    (setf salir t))))
     (format t "~%Adiós.~%")))
