@@ -96,7 +96,6 @@
         (crea-nodo :estado '(0 0 0 0 0 0 0 0 0 0 0)
 		   :jugador *jugador-inicial*
 		   :contador-turnos 1)))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Funciones auxiliares ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -414,9 +413,7 @@
 		      (crea-nodo
 		       :estado nuevo-estado
 		       :jugador (contrario (nodo-jugador *nodo-actual*))
-		       :contador-turnos (1+ (nodo-contador-turnos *nodo-actual*))
-		       ))
-		))
+		       :contador-turnos (1+ (nodo-contador-turnos *nodo-actual*))))))
 	  (t
 	   (setf nuevo-nodo (jugar-maquina))))
     (setf *nodo-actual* nuevo-nodo)))
