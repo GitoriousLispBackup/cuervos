@@ -419,11 +419,12 @@
 	   (loop until nuevo-estado do
 		(setf movimiento (jugar-humano))
 		(setf nuevo-estado (aplica-movimiento movimiento (nodo-estado *nodo-actual*)))
-		(setf (nth 11 nuevo-estado) (1+ (nodo-contador-turnos)))
-		(setf nuevo-nodo
-		      (crea-nodo
-		       :estado nuevo-estado
-		       :jugador (contrario (nodo-jugador *nodo-actual*))))))
+		(when nuevo-estado
+		  (setf (nth 11 nuevo-estado) (1+ (nodo-contador-turnos)))
+		  (setf nuevo-nodo
+			(crea-nodo
+			 :estado nuevo-estado
+			 :jugador (contrario (nodo-jugador *nodo-actual*)))))))
 	  (t
 	   (setf nuevo-nodo (jugar-maquina))))
     (setf *nodo-actual* nuevo-nodo)))
@@ -468,8 +469,13 @@
 	 (format t " 4) Salir~%")
 	 (setf opcion (read))
 	 (cond
-	   ((= opcion 1) nil)
+	   ((= opcion 1)
+	    (setf *max-humano* t)
+	    (setf *min-humano* t)
+	    (juego))
 	   ((= opcion 2)
+	    (setf *max-humano* nil)
+	    (setf *min-humano* t)
 	    (let ((salir2 nil) (opcion2 0))
 	      (loop until salir2 do
 		   (format t "~%¿Con quién jugará la máquina?~%")
