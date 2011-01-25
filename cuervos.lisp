@@ -145,14 +145,14 @@
 
 (defun se-puede-mover (estado i)
   (when (< i 0)
-    (return))
+    (return-from se-puede-mover))
   (loop for x in (nth i *lista-movimientos*)
      when (equal (nth x estado) 0)
      collect x))
 
 (defun puede-saltar (estado i)
   (when (< i 0)
-    (return))
+    (return-from puede-saltar))
   (loop for x in (nth i *lista-saltos*)
      when (and
 	   (equal (nth x estado) 0) ;destino vacio
@@ -269,8 +269,8 @@
   
 (defun funcion-estatica1 (estado turno)
   (let ((resultado 0))
-    (cond ((es-estado-ganador estado turno 'MAX) (return *maximo-valor*))
-	  ((es-estado-ganador estado turno 'MIN) (return *minimo-valor*))
+    (cond ((es-estado-ganador estado turno 'MAX) (return-from funcion-estatica1 *maximo-valor*))
+	  ((es-estado-ganador estado turno 'MIN) (return-from funcion-estatica1 *minimo-valor*))
 	  ((equal turno 'MAX) ;el resultado tiene que ser el mayor posible para el jugador actual
 	   (cond ((juega-buitre :estado estado)
 		  (setf resultado (+ resultado
@@ -292,8 +292,8 @@
 
 (defun funcion-estatica2 (estado turno)
   (let ((resultado 0))
-    (cond ((es-estado-ganador estado turno 'MAX) (return *maximo-valor*))
-	  ((es-estado-ganador estado turno 'MIN) (return *minimo-valor*))
+    (cond ((es-estado-ganador estado turno 'MAX) (return-from funcion-estatica2 *maximo-valor*))
+	  ((es-estado-ganador estado turno 'MIN) (return-from funcion-estatica2 *minimo-valor*))
 	  ((equal turno 'MAX)
 	   (cond ((juega-buitre :estado estado)
 		  (setf resultado (+ resultado (length (puede-saltar estado (buscar-buitre estado))))))
@@ -306,8 +306,8 @@
 
 (defun funcion-estatica3 (estado turno)
   (let ((resultado 0))
-    (cond ((es-estado-ganador estado turno 'MAX) (return *maximo-valor*))
-	  ((es-estado-ganador estado turno 'MIN) (return *minimo-valor*))
+    (cond ((es-estado-ganador estado turno 'MAX) (return-from funcion-estatica3 *maximo-valor*))
+	  ((es-estado-ganador estado turno 'MIN) (return-from funcion-estatica3 *minimo-valor*))
 	  ((equal turno 'MAX)
 	   (cond ((juega-buitre :estado estado)
 		  (setf resultado (+ resultado (length (puede-saltar estado (buscar-buitre estado))))))
@@ -323,8 +323,8 @@
 	
 (defun funcion-estatica4 (estado turno)
   (let ((resultado 0))
-    (cond ((es-estado-ganador estado turno 'MAX) (return *maximo-valor*))
-	  ((es-estado-ganador estado turno 'MIN) (return *minimo-valor*))
+    (cond ((es-estado-ganador estado turno 'MAX) (return-from funcion-estatica4 *maximo-valor*))
+	  ((es-estado-ganador estado turno 'MIN) (return-from funcion-estatica4 *minimo-valor*))
 	  ((equal turno 'MAX)
 	   (cond ((juega-buitre :estado estado)
 						(setf resultado (+ resultado
@@ -442,7 +442,7 @@
   (if (equal (nodo-jugador *nodo-actual*) 'max)
       (setf (symbol-function 'f-e-estatica) #'f-e-estatica-max)
       (setf (symbol-function 'f-e-estatica) #'f-e-estatica-min))
-  (let* ((profundidad 3))
+  (let* ((profundidad (+ 3 (comidos (nodo-estado *nodo-actual*)))))
     (minimax-a-b *nodo-actual* profundidad)))
 
 (defun jugar ()
@@ -555,11 +555,11 @@
 		      ((= ia2 1)
 		       (setf (symbol-function 'f-e-estatica-min) #'funcion-estatica3))
 		      ((= ia2 2)
-		       (setf (symbol-function 'f-e-estatica-min) #'funcion-estatica1))))
+		       (setf (symbol-function 'f-e-estatica-min) #'funcion-estatica4))))
 	      (loop until salir2 do
 		   (format t "** Partida Máquina contra Máquina **~%")
-		   (format t " 1) IA Máquina 1 (aleatoria, agresiva, defensiva): ~a~%" (ia-a-texto ia1))
-		   (format t " 2) IA Máquina 2 (aleatoria, agresiva, defensiva): ~a~%" (ia-a-texto ia2))
+		   (format t " 1) IA Máquina de los cuervos (aleatoria, agresiva, defensiva): ~a~%" (ia-a-texto ia1))
+		   (format t " 2) IA Máquina del buitre (aleatoria, agresiva, defensiva): ~a~%" (ia-a-texto ia2))
 		   (format t " 3) ¡Jugar!~%~%")
 		   (format t " 4) Atrás~%")
 		   (setf opcion2 (read))
