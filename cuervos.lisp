@@ -245,6 +245,10 @@
 ;	3.
 ;		-para el buitre, devolvera el numero de cuervos que puede comer desde su posicion actual (buitre agresivo)
 ;		-para los cuervos, devolvera el negado del numero de casillas a las que se puede mover el buitre (cuervos agresivos)
+;	4.
+;		-para el buitre, devolvera el numero de casillas a las que puede mover o saltar desde su posicion actual (buitre defensivo)
+;		-para los cuervos, devolvera el numero de cuervos que estan a salvo del buitre (cuervos defensivos)
+
 
 ;; Valores maximos y minimos para las variables alfa y beta
 (defvar *minimo-valor* -1000)
@@ -261,11 +265,13 @@
   
  (defun funcion-estatica1 (estado turno)
 	(let ((resultado 0))
-		(cond ((equal turno 'MAX) ;el resultado tiene que ser el mayor posible para el jugador actual
-			(cond ((juega-buitre :estado estado)
-				(setf resultado (+ resultado
-						   (length (se-puede-mover estado (busca-buitre estado)))
-						   (length (puede-saltar estado (busca-buitre estado))))))
+		(cond ((es-estado-ganador estado turno 'MAX) (return *maximo-valor*))
+			((es-estado-ganador estado turno 'MIN) (return *minimo-valor*))
+			((equal turno 'MAX) ;el resultado tiene que ser el mayor posible para el jugador actual
+				(cond ((juega-buitre :estado estado)
+					(setf resultado (+ resultado
+							(length (se-puede-mover estado (busca-buitre estado)))
+							(length (puede-saltar estado (busca-buitre estado))))))
 			      (t (setf resultado (- resultado
 						    (+ (length (se-puede-mover estado (busca-buitre estado)))
 						       (length (puede-saltar estado (busca-buitre estado)))))))))
@@ -282,9 +288,11 @@
 			
 (defun funcion-estatica2 (estado turno)
   (let ((resultado 0))
-    (cond ((equal turno 'MAX)
-	   (cond ((juega-buitre :estado estado)
-		  (setf resultado (+ resultado (length (puede-saltar estado (busca-buitre estado))))))
+    (cond ((es-estado-ganador estado turno 'MAX) (return *maximo-valor*))
+		((es-estado-ganador estado turno 'MIN) (return *minimo-valor*))
+		((equal turno 'MAX)
+			(cond ((juega-buitre :estado estado)
+			(setf resultado (+ resultado (length (puede-saltar estado (busca-buitre estado))))))
 		 (t (+ resultado (loop for x in (busca-cuervos estado) summing (length (se-puede-mover estado x)))))))
 	  (t
 	   (cond ((juegan-cuervos :estado estado)
@@ -294,8 +302,10 @@
 		
 (defun funcion-estatica3 (estado turno)
   (let ((resultado 0))
-    (cond ((equal turno 'MAX)
-	   (cond ((juega-buitre :estado estado)
+    (cond ((es-estado-ganador estado turno 'MAX) (return *maximo-valor*))
+		((es-estado-ganador estado turno 'MIN) (return *minimo-valor*))
+		((equal turno 'MAX)
+			(cond ((juega-buitre :estado estado)
 		  (setf resultado (+ resultado (length (puede-saltar estado (busca-buitre estado))))))
 		 (t (setf resultado (- resultado (+ (length (se-puede-mover estado (busca-buitre estado)))
 						    (length (puede-saltar(busca-buitre)))))))))
@@ -306,6 +316,24 @@
 		  (setf resultado (- resultado (+ (length (se-puede-mover estado (busca-buitre estado)))
 						  (length (puede-saltar estado (busca-buitre estado))))))))))
     resultado))
+	
+(defun funcion-estatica4 (estado turno)
+		(let ((resultado 0))
+			(cond ((es-estado-ganador estado turno 'MAX) (return *maximo-valor*))
+				((es-estado-ganador estado turno 'MIN) (return *minimo-valor*))
+				((equal turno 'MAX)
+					(cond ((juega-buitre :estado estado)
+						(setf resultado (+ resultado
+							(length (se-puede-mover estado (busca-buitre estado)))
+							(length (puede-saltar estado (busca-buitre estado))))))
+					(t (+ resultado (loop for x in (busca-cuervos estado) summing (length (se-puede-mover estado x)))))))
+				(t (cond ((juegan-cuervos :estado estado)
+						(setf resultado (+ resultado
+							(length (se-puede-mover estado (busca-buitre estado)))
+							(length (puede-saltar estado (busca-buitre estado))))))
+					(t (+ resultado (loop for x in (busca-cuervos estado) summing (length (se-puede-mover estado x))))))))
+			resultado))
+					
 		
 (setf (symbol-function 'f-e-estatica) #'funcion-estatica-aleatoria)
 (setf (symbol-function 'f-e-estatica-max) #'funcion-estatica-aleatoria)
