@@ -275,19 +275,19 @@
 	   (cond ((juega-buitre :estado estado)
 		  (setf resultado (+ resultado
 				     (length (se-puede-mover estado (buscar-buitre estado)))
-				     (length (puede-saltar estado (buscar-buitre estado))))))
+				     (* 2 (length (puede-saltar estado (buscar-buitre estado))))))) ;damos prioridad a los saltos frente a los movimientos
 		 (t (setf resultado (- resultado
 				       (+ (length (se-puede-mover estado (buscar-buitre estado)))
-					  (length (puede-saltar estado (buscar-buitre estado)))))))))
+					  (* 2 (length (puede-saltar estado (buscar-buitre estado))))))))))
 	  
 	  (t ; el turno es MIN, asi que se tiene que devolver el valor menor para el jugador actual
 	   (cond ((juegan-cuervos :estado estado)
 		  (setf resultado (+ resultado
 				     (length (se-puede-mover estado (buscar-buitre estado)))
-				     (length (puede-saltar estado (buscar-buitre estado))))))
+				     (* 2 (length (puede-saltar estado (buscar-buitre estado)))))))
 		 (t (setf resultado (- resultado
 				       (+ (length (se-puede-mover estado (buscar-buitre estado)))
-					  (length (puede-saltar estado (buscar-buitre estado))))))))))
+					  (* 2 (length (puede-saltar estado (buscar-buitre estado)))))))))))
     resultado))
 
 (defun funcion-estatica2 (estado turno)
@@ -301,7 +301,7 @@
 	  (t
 	   (cond ((juegan-cuervos :estado estado)
 		  (setf resultado (+ resultado (length (puede-saltar estado (buscar-buitre estado))))))
-		 (t (+ resultado (loop for x in (busca-cuervos estado) summing (length (se-puede-mover estado x))))))))
+		 (t (setf resultado (+ resultado (loop for x in (busca-cuervos estado) summing (length (se-puede-mover estado x)))))))))
     resultado))
 
 (defun funcion-estatica3 (estado turno)
@@ -329,15 +329,62 @@
 	   (cond ((juega-buitre :estado estado)
 						(setf resultado (+ resultado
 								   (length (se-puede-mover estado (buscar-buitre estado)))
-								   (length (puede-saltar estado (buscar-buitre estado))))))
-		 (t (+ resultado (loop for x in (busca-cuervos estado) summing (length (se-puede-mover estado x)))))))
+								   (* 2 (length (puede-saltar estado (buscar-buitre estado)))))))
+		 (t (setf resultado (+ resultado (loop for x in (busca-cuervos estado) summing (length (se-puede-mover estado x))))))))
 	  (t (cond ((juegan-cuervos :estado estado)
 		    (setf resultado (+ resultado
 				       (length (se-puede-mover estado (buscar-buitre estado)))
-				       (length (puede-saltar estado (buscar-buitre estado))))))
-		   (t (+ resultado (loop for x in (busca-cuervos estado) summing (length (se-puede-mover estado x))))))))
+				       (* 2 (length (puede-saltar estado (buscar-buitre estado)))))))
+		   (t (setf resultado (+ resultado (loop for x in (busca-cuervos estado) summing (length (se-puede-mover estado x)))))))))
     resultado))
+
+;funcion estatica para buitre agresivo
+(defun funcion-estatica-b-agr (estado turno)
+	(let ((resultado 0))
+		(cond ((es-estado-ganador estado turno 'MAX) (return-from funcion-estatica-b-agr *maximo-valor*))
+			((es-estado-ganador estado turno 'MIN) (return-from funcion-estatica-b-agr *minimo-valor*))
+			((equal turno 'MAX) (setf resultado (+ resultado (length (puede-saltar estado (buscar-buitre estado))))))
+			(t (setf resultado (+ resultado (loop for x in (busca-cuervos estado) summing (length (se-puede-mover estado x)))))))
+		resultado))
 		
+;funcion estatica para buitre defensivo
+(defun funcion-estatica-b-def (estado turno)
+	(let ((resultado 0))
+		(cond ((es-estado-ganador estado turno 'MAX) (return-from funcion-estatica-b-def *maximo-valor*))
+			((es-estado-ganador estado turno 'MIN) (return-from funcion-estatica-b-def *minimo-valor*))
+			((equal turno 'MAX) (setf resultado (+ resultado
+								   (length (se-puede-mover estado (buscar-buitre estado)))
+								   (* 2 (length (puede-saltar estado (buscar-buitre estado)))))))
+			(t (setf resultado (+ resultado (loop for x in (busca-cuervos estado) summing (length (se-puede-mover estado x))))))) ;aqui tengo algunas dudas... revisar luego.
+		resultado))
+
+;funcion estatica para cuervo agresivo
+(defun funcion-estatica-c-agr (estado turno)
+	(let ((resultado 0))
+		(cond ((es-estado-ganador estado turno 'MAX) (return-from funcion-estatica-c-agr *maximo-valor*))
+			((es-estado-ganador estado turno 'MIN) (return-from funcion-estatica-c-agr *minimo-valor*)) 
+			((equal turno 'MAX) (setf resultado (- resultado
+				       (+ (length (se-puede-mover estado (buscar-buitre estado)))
+					  (* 2 (length (puede-saltar estado (buscar-buitre estado))))))))
+			(t (setf resultado (+ resultado
+				     (length (se-puede-mover estado (buscar-buitre estado)))
+				     (* 2 (length (puede-saltar estado (buscar-buitre estado)))))))) ; una vez mas, not sure. Hay que repasar esto :S
+					 
+	resultado))
+
+			
+;funcion estatica para cuervo defensivo
+(defun funcion-estatica-c-agr (estado turno)
+	(let ((resultado 0))
+		(cond ((es-estado-ganador estado turno 'MAX) (return-from funcion-estatica-c-def *maximo-valor*))
+			((es-estado-ganador estado turno 'MIN) (return-from funcion-estatica-c-def *minimo-valor*)) 
+			((equal turno 'MAX) (setf resultado (+ resultado (loop for x in (busca-cuervos estado) summing (length (se-puede-mover estado x))))))
+			(t (setf resultado (+ resultado (length (puede-saltar estado (buscar-buitre estado))))))) ; una vez mas, not sure. Hay que repasar esto :S
+					 
+	resultado))
+
+
+	
 (setf (symbol-function 'f-e-estatica) #'funcion-estatica-aleatoria)
 (setf (symbol-function 'f-e-estatica-max) #'funcion-estatica-aleatoria)
 (setf (symbol-function 'f-e-estatica-min) #'funcion-estatica-aleatoria)
