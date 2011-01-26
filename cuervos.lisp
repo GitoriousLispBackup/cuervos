@@ -11,7 +11,9 @@
 (defvar *max-humano* nil)
 (defvar *min-humano* t)
 
-;el tablero se representa como un array de tamaño 10, el numero de casillas que hay con C o B o nil, más una posicion más con el numero de cuervos comidos
+;el tablero se representa como un array de tamaño 10, el numero de casillas que hay con C o B o nil
+; más una posicion más con el numero de cuervos comidos
+; más el contador de turnos, es decir, al final es una lista de longitud 12
 ;         0
 ;
 ; 1    2     3    4
@@ -164,15 +166,26 @@
     (cond ((equal a 0) n)
 	  (t a))))
 
+(defun cuervos-to-string (comidos &optional (cuervos nil))
+  (let ((limit comidos)
+	(lista (list)))
+    (when cuervos
+      (setf limit (- 7 comidos)))
+    (setf lista (loop for a from 1 to limit collect 'C))
+    (format nil "~{~a~}" lista)))
+      
 (defun imprimir-tablero (&optional (nodo *nodo-actual*) (canal t))
   (let ((estado (nodo-estado nodo)))
+    (format canal "~%~%Turno ~a~%" (nodo-contador-turnos nodo))
     (format canal "~%          ~a~%~%" (quien-okupa 0 estado))
     (format canal " ~a     ~a     ~a     ~a~%~%" (quien-okupa 1 estado) (quien-okupa 2 estado) (quien-okupa 3 estado) (quien-okupa 4 estado))
     (format canal "     ~a         ~a~%" (quien-okupa 5 estado) (quien-okupa 6 estado))
     (format canal "          ~a~%~%" (quien-okupa 7 estado))
     (format canal "  ~a                ~a~%~%" (quien-okupa 8 estado) (quien-okupa 9 estado))
-    (format canal "El buitre ha comido ~a cuervos~%" (comidos estado))
-    (format canal "Jugador siguiente: ~a~%" (nodo-jugador nodo))))
+    (format canal "Cuervos: ~10a Buitre:~a~%" (cuervos-to-string (comidos estado) t) (cuervos-to-string (comidos estado)))
+    (if (juega-buitre nodo)
+	(format canal "Juega el buitre~%")
+	(format canal "Juegan los cuervos~%"))))
 
 ;;;;;;;;;;;;;;;;;;;;
 ;;; Estados, etc :::
@@ -532,7 +545,6 @@
   (crea-nodo-inicial)
   (let ((fin-juego nil))
     (loop until fin-juego do
-	 (format t "~%~%Turno ~a~%" (nodo-contador-turnos))
 	 (jugar)
 	 (if (es-estado-final (nodo-estado *nodo-actual*))
 	     (setf fin-juego t)))
