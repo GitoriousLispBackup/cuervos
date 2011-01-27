@@ -161,41 +161,64 @@
 	   (equal (nth (aref *matriz-saltos* i x) estado) 'C)) ;hay un cuervo en el salto
      collect x))
 
-(defun saltar (estado i j)
+(defun salto-sencillo (estado i j)
   (let ((nuevo (loop for a in estado collect a)))
     (setf (nth i nuevo) 0)
     (setf (nth j nuevo) 'B)
     (setf (nth (aref *matriz-saltos* i j) nuevo) 0)
     nuevo))
 
-(defun saltos-r (estado i)
-  (let* ((saltos-desde-aqui (puede-saltar estado i))
-	 (resultado (list)))
-    (cond ((endp saltos-desde-aqui) (list))
-	  (t (loop for destino in saltos-desde-aqui do
-		  (let* ((nuevo-estado (saltar estado i destino))
-			 (dests (saltos-r nuevo-estado destino)))
-		    (setf resultado (append resultado (list (append (list destino) dests))))))))
-    resultado))
+(defun saltos (&optional (estado (nodo-estado *nodo-actual*)))
+  ;las defino dentro porque no tienen sentido fuera de esta funcion
+  (defun saltos-r (estado i)
+    (let* ((saltos-desde-aqui (puede-saltar estado i))
+	   (resultado (list)))
+      (cond ((endp saltos-desde-aqui) (list))
+	    (t (loop for destino in saltos-desde-aqui do
+		    (let* ((nuevo-estado (salto-sencillo estado i destino))
+			   (dests (saltos-r nuevo-estado destino)))
+		      (setf resultado (append resultado (list (append (list destino) dests))))))))
+      resultado))
+  (defun saltos-r2 (lista)
+    (cond ((eq (length lista) 1) (cons (first lista) '()))
+	  (t (cons (first lista) (saltos-r2 (second lista))))))
 
-(defun saltos-r2 (lista)
-  (cond ((eq (length lista) 1) (cons (first lista) '()))
-	(t (cons (first lista) (saltos-r2 (second lista))))))
+  (mapcar #'saltos-r2 (saltos-r estado (buscar-buitre estado))))
 
-(defun saltos (&optional (nodo *nodo-actual*))
-    (mapcar #'saltos-r2 (saltos-r
-			 (nodo-estado nodo)
-			 (buscar-buitre (nodo-estado *nodo-actual*)))))
-
-(defun mejor-salto (&optional (nodo *nodo-actual*))
+(defun mejor-salto (&optional (estado (nodo-estado *nodo-actual*)))
   (let ((long 0)
 	(camino nil))
-    (loop for un-camino in (saltos nodo)
+    (loop for un-camino in (saltos estado)
 	 when (> (length un-camino) long)
 	 do (setf camino un-camino)
 	 (setf long (length un-camino)))
     (list long camino)))
-    
+
+(defun salto-multiple (estado i j)
+  (let* ((saltos-posibles (saltos estado))
+	 (este-salto (find-if #'(lambda(x) (member j x)) saltos-posibles)))
+    (if este-salto
+	(let ((fin nil))
+	  (loop
+	     for dest in este-salto
+	     until fin
+	     do
+	       (setf estado (salto-sencillo estado i dest))
+	       (when (= i j)
+		 (setf fin t))
+	       (setf i dest))
+	  estado)
+	nil)))
+
+(defun puede-saltar-multiple (estado i)
+  (let ((resultado (list)))
+    (loop for salto in (saltos estado)
+       do (setf resultado (append resultado salto)))
+    resultado))
+
+(puede-saltar-multiple '(0 0 C 0 0 C C B 0 0 0 6) 1)
+(saltos '(0 0 C 0 0 C C B 0 0 0 6))
+(mejor-salto '(0 0 C 0 0 C C B 0 0 0 6))
 
 (defun quien-okupa (n estado)
   (let ((a (nth n estado)))
@@ -376,9 +399,9 @@
 	  ((es-estado-ganador estado turno 'MIN) (return-from funcion-estatica4 *minimo-valor*))
 	  ((equal turno 'MAX)
 	   (cond ((juega-buitre :estado estado)
-						(setf resultado (+ resultado
-								   (length (se-puede-mover estado (buscar-buitre estado)))
-								   (* 2 (length (puede-saltar estado (buscar-buitre estado)))))))
+		  (setf resultado (+ resultado
+				     (length (se-puede-mover estado (buscar-buitre estado)))
+				     (* 2 (length (puede-saltar estado (buscar-buitre estado)))))))
 		 (t (setf resultado (+ resultado (loop for x in (busca-cuervos estado) summing (length (se-puede-mover estado x))))))))
 	  (t (cond ((juegan-cuervos :estado estado)
 		    (setf resultado (+ resultado
@@ -389,23 +412,23 @@
 
 ;funcion estatica para buitre agresivo
 (defun funcion-estatica-b-agr (estado turno)
-	(let ((resultado 0))
-		(cond ((es-estado-ganador estado turno 'MAX) (return-from funcion-estatica-b-agr *maximo-valor*))
-			((es-estado-ganador estado turno 'MIN) (return-from funcion-estatica-b-agr *minimo-valor*))
-			((equal turno 'MAX) (setf resultado (+ resultado (length (puede-saltar estado (buscar-buitre estado))))))
-			(t (setf resultado (+ resultado (loop for x in (busca-cuervos estado) summing (length (se-puede-mover estado x)))))))
-		resultado))
-		
+  (let ((resultado 0))
+    (cond ((es-estado-ganador estado turno 'MAX) (return-from funcion-estatica-b-agr *maximo-valor*))
+	  ((es-estado-ganador estado turno 'MIN) (return-from funcion-estatica-b-agr *minimo-valor*))
+	  ((equal turno 'MAX) (setf resultado (+ resultado (length (puede-saltar estado (buscar-buitre estado))))))
+	  (t (setf resultado (+ resultado (loop for x in (busca-cuervos estado) summing (length (se-puede-mover estado x)))))))
+    resultado))
+
 ;funcion estatica para buitre defensivo
 (defun funcion-estatica-b-def (estado turno)
-	(let ((resultado 0))
-		(cond ((es-estado-ganador estado turno 'MAX) (return-from funcion-estatica-b-def *maximo-valor*))
-			((es-estado-ganador estado turno 'MIN) (return-from funcion-estatica-b-def *minimo-valor*))
-			((equal turno 'MAX) (setf resultado (+ resultado
-								   (length (se-puede-mover estado (buscar-buitre estado)))
-								   (* 2 (length (puede-saltar estado (buscar-buitre estado)))))))
-			(t (setf resultado (+ resultado (loop for x in (busca-cuervos estado) summing (length (se-puede-mover estado x))))))) ;aqui tengo algunas dudas... revisar luego.
-		resultado))
+  (let ((resultado 0))
+    (cond ((es-estado-ganador estado turno 'MAX) (return-from funcion-estatica-b-def *maximo-valor*))
+	  ((es-estado-ganador estado turno 'MIN) (return-from funcion-estatica-b-def *minimo-valor*))
+	  ((equal turno 'MAX) (setf resultado (+ resultado
+						 (length (se-puede-mover estado (buscar-buitre estado)))
+						 (* 2 (length (puede-saltar estado (buscar-buitre estado)))))))
+	  (t (setf resultado (+ resultado (loop for x in (busca-cuervos estado) summing (length (se-puede-mover estado x))))))) ;aqui tengo algunas dudas... revisar luego.
+    resultado))
 
 ;funcion estatica para cuervo agresivo
 (defun funcion-estatica-c-agr (estado turno)
