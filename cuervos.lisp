@@ -161,6 +161,42 @@
 	   (equal (nth (aref *matriz-saltos* i x) estado) 'C)) ;hay un cuervo en el salto
      collect x))
 
+(defun saltar (estado i j)
+  (let ((nuevo (loop for a in estado collect a)))
+    (setf (nth i nuevo) 0)
+    (setf (nth j nuevo) 'B)
+    (setf (nth (aref *matriz-saltos* i j) nuevo) 0)
+    nuevo))
+
+(defun saltos-r (estado i)
+  (let* ((saltos-desde-aqui (puede-saltar estado i))
+	 (resultado (list)))
+    (cond ((endp saltos-desde-aqui) (list))
+	  (t (loop for destino in saltos-desde-aqui do
+		  (let* ((nuevo-estado (saltar estado i destino))
+			 (dests (saltos-r nuevo-estado destino)))
+		    (setf resultado (append resultado (list (append (list destino) dests))))))))
+    resultado))
+
+(defun saltos-r2 (lista)
+  (cond ((eq (length lista) 1) (cons (first lista) '()))
+	(t (cons (first lista) (saltos-r2 (second lista))))))
+
+(defun saltos (&optional (nodo *nodo-actual*))
+    (mapcar #'saltos-r2 (saltos-r
+			 (nodo-estado nodo)
+			 (buscar-buitre (nodo-estado *nodo-actual*)))))
+
+(defun mejor-salto (&optional (nodo *nodo-actual*))
+  (let ((long 0)
+	(camino nil))
+    (loop for un-camino in (saltos nodo)
+	 when (> (length un-camino) long)
+	 do (setf camino un-camino)
+	 (setf long (length un-camino)))
+    (list long camino)))
+    
+
 (defun quien-okupa (n estado)
   (let ((a (nth n estado)))
     (cond ((equal a 0) n)
@@ -484,6 +520,8 @@
 		  (format t "¿Destino?~%")
 		  (setf movimiento (list (first movimiento) (read))))))
 	  ((juega-buitre)
+	   (format t "Saltos posibles: ~a~%" (saltos))
+	   (format t "Mejor salto: long ~a, camino ~a~%" (first (mejor-salto)) (second (mejor-salto)))
 	   (cond ((= (nodo-contador-turnos) 2)
 		  ;poner el buitre
 		  (format t "Tienes que poner el buitre. ¿Dónde?~%")
