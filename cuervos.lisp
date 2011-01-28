@@ -162,7 +162,7 @@
      collect x))
 
 (defun salto-sencillo (estado i j)
-  (let ((nuevo (loop for a in estado collect a)))
+  (let ((nuevo (copy-seq estado)))
     (setf (nth i nuevo) 0) ;origen a 0
     (setf (nth j nuevo) 'B) ;destino B
     (setf (nth (aref *matriz-saltos* i j) nuevo) 0) ;sobre el que saltamos a 0
@@ -171,6 +171,7 @@
 
 (defun saltos (&optional (estado (nodo-estado *nodo-actual*)))
   ;las defino dentro porque no tienen sentido fuera de esta funcion
+  ;crea las listas de los saltos
   (defun saltos-r (estado i)
     (let* ((saltos-desde-aqui (puede-saltar estado i))
 	   (resultado (list)))
@@ -180,6 +181,7 @@
 			   (dests (saltos-r nuevo-estado destino)))
 		      (setf resultado (append resultado (list (append (list destino) dests))))))))
       resultado))
+  ;pone las listas bien
   (defun saltos-r2 (lista)
     (cond ((eq (length lista) 1) (cons (first lista) '()))
 	  (t (cons (first lista) (saltos-r2 (second lista))))))
@@ -305,13 +307,13 @@
 	     (cond ((equal (length (second movimiento)) 1)
 		    (cond ((member destino movimientos) ;mover el buitre
 			   (setf ok t))
-			  ((member destino saltos-sencillos)
+			  ((member destino saltos-sencillos);comer un unico cuervo
 			   (setf estado-temporal (salto-sencillo estado-temporal buitre destino)))
 			  (t
 			   (setf estado-temporal nil))))
 		   ((and
 		     (> (length (second movimiento)) 1)
-		     (find-if #'(lambda(x) (es-subseq (second movimiento) x)) (saltos estado-temporal)))
+		     (find-if #'(lambda(x) (es-subseq (second movimiento) x)) (saltos estado-temporal)));comer varios cuervos
 		    (setf estado-temporal (salto-multiple estado-temporal buitre (first (last (second movimiento))))))
 		   (t  (setf estado-temporal nil)))
 	     (when ok
@@ -475,6 +477,7 @@
 
 	
 (setf (symbol-function 'f-e-estatica) #'funcion-estatica-aleatoria)
+(setf (symbol-function 'f-e-estatica) #'funcion-estatica1)
 (setf (symbol-function 'f-e-estatica-max) #'funcion-estatica-aleatoria)
 (setf (symbol-function 'f-e-estatica-min) #'funcion-estatica-aleatoria)
 
@@ -482,23 +485,7 @@
 ;;; Minimax ;;;
 ;;;;;;;;;;;;;;;
 
-;; Para un posible nodo del arbol devuelve sus hijos
-;(defun sucesores (nodo-j)
-;  (let ((resultado ()))
-;    (loop for movimiento in *movimientos* do
-;	 (let ((siguiente
-;		(aplica-movimiento movimiento
-;				   (estado nodo-j) (if (equal (jugador nodo-j) 'max)
-;						       *color-maquina*
-;						       *color-humano*))))
-;	   (when siguiente
-;	     (push
-;	      (crea-nodo-j
-;	       :estado siguiente
-;	       :jugador (contrario (jugador nodo-j)))
-;	      resultado))))
-;    (nreverse resultado)))
-
+; Para un posible nodo del arbol devuelve sus hijos
 ;debe devolver una lista de nodos con los posibles movimientos que se puede hacer
 (defun sucesores (nodo)
   (let ((estado (nodo-estado nodo))
@@ -510,7 +497,10 @@
 	   ;  si no, se puede mover o incluso saltar
 	   (if (equal (nodo-contador-turnos nodo) 2)
 	       (loop for i from 0 to 9 do (push (list -3 i) movimientos))
-	       (loop for i from 0 to 9 do (push (list -2 (list i)) movimientos))))
+	       (progn
+		 (loop for i from 0 to 9 do (push (list -2 (list i)) movimientos)) ;movimientos o saltos sencillos
+		 (mapcar #'(lambda(x) (push (list -2 x) movimientos)) (saltos (nodo-estado nodo)))
+		 )))
 	  ((juegan-cuervos nodo)
 	   ;si es cuervos
 	   (cond ((faltan-cuervos nodo)
@@ -524,7 +514,7 @@
 		    (loop for c in cuervos do
 			 (setf movimientos
 			       (append movimientos (mapcar #'(lambda(x) (list c x)) (nth c *lista-movimientos*))))))))))
-    (reverse movimientos)
+    (setf movimientos (reverse movimientos))
     ;mirar qué movimientos son posibles con aplica-movimiento
     (loop for movimiento in movimientos do
 	 (let ((siguiente
