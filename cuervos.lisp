@@ -163,9 +163,10 @@
 
 (defun salto-sencillo (estado i j)
   (let ((nuevo (loop for a in estado collect a)))
-    (setf (nth i nuevo) 0)
-    (setf (nth j nuevo) 'B)
-    (setf (nth (aref *matriz-saltos* i j) nuevo) 0)
+    (setf (nth i nuevo) 0) ;origen a 0
+    (setf (nth j nuevo) 'B) ;destino B
+    (setf (nth (aref *matriz-saltos* i j) nuevo) 0) ;sobre el que saltamos a 0
+    (setf (nth 10 nuevo) (1+ (nth 10 nuevo))) ;aumentar contador de saltos
     nuevo))
 
 (defun saltos (&optional (estado (nodo-estado *nodo-actual*)))
@@ -245,6 +246,11 @@
     (if (juega-buitre nodo)
 	(format canal "Juega el buitre~%")
 	(format canal "Juegan los cuervos~%"))))
+
+(defun es-subseq (seq seq2)
+  (cond ((endp seq) t)
+	((endp seq2) nil)
+	(t (and (equal (first seq) (first seq2)) (es-subseq (rest seq) (rest seq2))))))
 
 ;;;;;;;;;;;;;;;;;;;;
 ;;; Estados, etc :::
@@ -552,7 +558,8 @@
 		 (t
 		  ;mover o saltar el buitre
 		  (format t "¿Dónde mueves el buitre?~%")
-		  (setf movimiento (list -2 (read)))))))
+		  (setf movimiento (list -2 (eval (read-from-string (concatenate 'string "'(" (read-line) ")")))))))))
+    (format t "movimiento: ~a~%" movimiento)
     movimiento))
 
 ;TODO
