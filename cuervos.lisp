@@ -202,14 +202,16 @@
 	(let ((fin nil))
 	  (loop
 	     for dest in este-salto
-	     until fin
+	     when (not fin)
 	     do
-	       (setf estado (salto-sencillo estado i dest))
-	       (when (= i j)
-		 (setf fin t))
+	       (if (= i j)
+		 (setf fin t)
+		 (setf estado (salto-sencillo estado i dest)))
 	       (setf i dest))
 	  estado)
 	nil)))
+
+(salto-multiple '(0 B C 0 0 0 C C 0 0 0 6) 1 9)
 
 (defun puede-saltar-multiple (estado i)
   (let ((resultado (list)))
@@ -296,15 +298,15 @@
 	  ((= (first movimiento) -2) ;mover el buitre
 	   (let* ((buitre (buscar-buitre estado))
 		  (movimientos (se-puede-mover estado buitre))
-		  (saltos (puede-saltar estado buitre))
+		  (saltos-sencillos (puede-saltar estado buitre))
 		  (destino (first (second movimiento)))
 		  (cuervo nil)
 		  (ok nil))
-	     (cond ((equal (length (second movimiento)) 1) 
+	     (cond ((equal (length (second movimiento)) 1)
 		    (cond ((member destino movimientos) ;mover el buitre
 			   (setf ok t))
-			  ((member destino saltos)
-			   (salto-sencillo estado-temporal buitre destino))
+			  ((member destino saltos-sencillos)
+			   (setf estado-temporal (salto-sencillo estado-temporal buitre destino)))
 			  (t
 			   (setf estado-temporal nil))))
 		   ((and
@@ -506,8 +508,9 @@
 	   ;si es buitre
 	   ;  si es el primer movimiento, buscar un sitio donde poner el buitre
 	   ;  si no, se puede mover o incluso saltar
-	   (let ((turno (if (equal (nodo-contador-turnos nodo) 2) -3 -2)))
-	     (loop for i from 0 to 9 do (push (list turno i) movimientos))))
+	   (if (equal (nodo-contador-turnos nodo) 2)
+	       (loop for i from 0 to 9 do (push (list -3 i) movimientos))
+	       (loop for i from 0 to 9 do (push (list -2 (list i)) movimientos))))
 	  ((juegan-cuervos nodo)
 	   ;si es cuervos
 	   (cond ((faltan-cuervos nodo)
