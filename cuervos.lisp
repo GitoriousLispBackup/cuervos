@@ -591,8 +591,12 @@
   (let ((fin-juego nil))
     (loop until fin-juego do
 	 (jugar)
-	 (if (es-estado-final (nodo-estado *nodo-actual*))
-	     (setf fin-juego t)))
+	 (when (es-estado-final (nodo-estado *nodo-actual*))
+	     (setf fin-juego t))
+	 (when (= (mod (nodo-contador-turnos) 50) 0)
+	   (format t "~%Han pasado ~a turnos, ¿continuar? (s/n)~%" (nodo-contador-turnos))
+	   (when (equal (read) 'n)
+	     (setf fin-juego t))))
     (imprimir-fin-juego)))
 
 
