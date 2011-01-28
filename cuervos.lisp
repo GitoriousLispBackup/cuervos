@@ -225,6 +225,18 @@
 (saltos '(0 0 C 0 0 C C B 0 0 0 6))
 (mejor-salto '(0 0 C 0 0 C C B 0 0 0 6))
 
+(defun dividir-saltos (lista)
+  (let ((resultado (list)))
+    (loop for salto in lista do
+	 (loop until (endp salto)
+	    do
+	      (when (not (= (length salto) 1))
+		(push salto resultado))
+	      (setf salto (reverse (rest (reverse salto))))))
+    resultado))
+
+(dividir-saltos '((1 3 9)(4)))
+
 (defun quien-okupa (n estado)
   (let ((a (nth n estado)))
     (cond ((equal a 0) n)
@@ -463,7 +475,7 @@
 	       (loop for i from 0 to 9 do (push (list -3 i) movimientos))
 	       (progn
 		 (loop for i from 0 to 9 do (push (list -2 (list i)) movimientos)) ;movimientos o saltos sencillos
-		 (mapcar #'(lambda(x) (push (list -2 x) movimientos)) (saltos (nodo-estado nodo)))
+		 (mapcar #'(lambda(x) (push (list -2 x) movimientos)) (dividir-saltos (saltos (nodo-estado nodo))))
 		 )))
 	  ((juegan-cuervos nodo)
 	   ;si es cuervos
