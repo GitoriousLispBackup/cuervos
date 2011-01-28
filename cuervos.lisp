@@ -281,7 +281,7 @@
   resultado))
 
 (defun aplica-movimiento (movimiento estado)
-  (let ((estado-temporal (loop for a in estado collect a)))
+  (let ((estado-temporal (copy-seq estado)))
     (cond ((not (equal (nth (second movimiento) estado) 0));si el destino esta ocupado no vale
 	   (setf estado-temporal nil))
 	  ((= (first movimiento) -3) ;poner el buitre
@@ -290,22 +290,28 @@
 	   (let* ((buitre (buscar-buitre estado))
 		  (movimientos (se-puede-mover estado buitre))
 		  (saltos (puede-saltar estado buitre))
-		  (destino nil)
+		  (destino (first (second movimiento)))
 		  (cuervo nil)
 		  (ok nil))
-	     (cond
-	       ((member (second movimiento) movimientos) ;mover el buitre
-		(setf ok t))
-	       ((member (second movimiento) saltos) ;comer un cuervo
-		(setf cuervo (aref *matriz-saltos* buitre (second movimiento))) ;cuervo que se come
-		(setf (nth cuervo estado-temporal) 0) ;poner a cero donde estaba el cuervo
-		(setf (nth 10 estado-temporal) (1+ (nth 10 estado-temporal)));aumentar los cuervos comidos
-		(setf ok t))
-	       (t
-		(setf estado-temporal nil)))
+	    
+
+	     (cond ((equal (length (second movimiento)) 1) 
+		    (cond ((member destino movimientos) ;mover el buitre
+			   (setf ok t))
+			  ((member destino saltos)
+			   (salto-sencillo estado-temporal buitre destino))
+			  (t
+			   (setf estado-temporal nil))))
+		   ((and
+		     (> (length (second movimiento)) 1)
+		     (find-if #'(lambda(x) (es-subseq (second movimiento) x)) (saltos estado-temporal)))
+		    (setf estado-temporal (salto-multiple estado-temporal buitre (first (last (second movimiento))))))
+		   (t  (setf estado-temporal nil)))
 	     (when ok
 	       (setf (nth (second movimiento) estado-temporal) 'B)
 	       (setf (nth buitre estado-temporal) 0))))
+	 
+
 	  ((= (first movimiento) -1) ;poner cuervo
 	   (setf (nth (second movimiento) estado-temporal) 'C))
 	  (t ;mover cuervo
