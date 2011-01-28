@@ -282,7 +282,14 @@
 
 (defun aplica-movimiento (movimiento estado)
   (let ((estado-temporal (copy-seq estado)))
-    (cond ((not (equal (nth (second movimiento) estado) 0));si el destino esta ocupado no vale
+    (cond ((or
+	    (and ;si el movimiento es una lista
+	     (listp (second movimiento))
+	     (not (equal (nth (first (second movimiento)) estado) 0)))
+	    (and ;si es un movimiento simple
+	     (not (listp (second movimiento)))
+	     (not (equal (nth (second movimiento) estado) 0))))
+	   ;si el destino esta ocupado no vale
 	   (setf estado-temporal nil))
 	  ((= (first movimiento) -3) ;poner el buitre
 	   (setf (nth (second movimiento) estado-temporal) 'B))
@@ -293,8 +300,6 @@
 		  (destino (first (second movimiento)))
 		  (cuervo nil)
 		  (ok nil))
-	    
-
 	     (cond ((equal (length (second movimiento)) 1) 
 		    (cond ((member destino movimientos) ;mover el buitre
 			   (setf ok t))
@@ -308,10 +313,8 @@
 		    (setf estado-temporal (salto-multiple estado-temporal buitre (first (last (second movimiento))))))
 		   (t  (setf estado-temporal nil)))
 	     (when ok
-	       (setf (nth (second movimiento) estado-temporal) 'B)
+	       (setf (nth destino estado-temporal) 'B)
 	       (setf (nth buitre estado-temporal) 0))))
-	 
-
 	  ((= (first movimiento) -1) ;poner cuervo
 	   (setf (nth (second movimiento) estado-temporal) 'C))
 	  (t ;mover cuervo
@@ -565,7 +568,6 @@
 		  ;mover o saltar el buitre
 		  (format t "¿Dónde mueves el buitre?~%")
 		  (setf movimiento (list -2 (eval (read-from-string (concatenate 'string "'(" (read-line) ")")))))))))
-    (format t "movimiento: ~a~%" movimiento)
     movimiento))
 
 ;TODO
