@@ -277,6 +277,9 @@
    (and b1 (not b2))
    (and (not b1) b2)))
 
+(defun 2+ (x) (+ 2 x))
+(defun 2- (x) (- x 2))
+
 ;;;;;;;;;;;;;;;;;;;;
 ;;; Estados, etc :::
 ;;;;;;;;;;;;;;;;;;;;
@@ -500,8 +503,11 @@
 			     (= x 8)
 			     (= x 9))
 		       do
-		       (setf resultado (1+ resultado)))
+		       (setf resultado (2+ resultado))) ;con 2 le doy más importancia
 		  (setf resultado (+ resultado (length (busca-cuervos estado))))
+		  ;pero sólo cuatro! en las cinco esquinas es un poco perder un cuervo
+		  (when (= 5 (length (busca-cuervos estado)))
+		    (setf resultado (2- resultado)))
 		  ;si tenemos cuervos al lado del buitre y no nos pueden comer mola TODO
 		  
 		  ;minimizar los movimientos del buitre
