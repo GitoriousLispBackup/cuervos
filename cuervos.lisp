@@ -79,7 +79,7 @@
 ;; Estructura que representa un nodo del arbol de busqueda
 (defstruct (nodo (:constructor crea-nodo)
 		 (:conc-name nodo-)
-		 (:print-function escribe-nodo))
+		 (:print-function escribe-nodo-short))
   estado ;tablero
   jugador ;jugador actual
   ;contador-turnos ;este es el turno X, si es impar, juegan cuervos; si es par, el buitre
@@ -91,6 +91,9 @@
   (format canal "Jugador del nodo: ~a~%" (nodo-jugador nodo))
   (format canal "Turnos del nodo: ~a~%" (nodo-contador-turnos nodo))
   (imprimir-tablero nodo canal))
+
+(defun escribe-nodo-short (nodo &optional (canal t) profundidad)
+  (format canal "Nodo: ~a ~a" (nodo-estado nodo) (nodo-jugador nodo)))
 
 ;; Funcion que inicializa *nodo-inicial*
 (defun crea-nodo-inicial ()
@@ -147,7 +150,7 @@
 
 (defun se-puede-mover (estado i)
   (when (< i 0)
-    (return-from se-puede-mover))
+    (return-from se-puede-mover (list)))
   (loop for x in (nth i *lista-movimientos*)
      when (equal (nth x estado) 0)
      collect x))
@@ -268,6 +271,11 @@
   (cond ((endp seq) t)
 	((endp seq2) nil)
 	(t (and (equal (first seq) (first seq2)) (es-subseq (rest seq) (rest seq2))))))
+
+(defun xor (b1 b2)
+  (or
+   (and b1 (not b2))
+   (and (not b1) b2)))
 
 ;;;;;;;;;;;;;;;;;;;;
 ;;; Estados, etc :::
@@ -450,8 +458,63 @@
 		   (t (setf resultado (+ resultado (loop for x in (busca-cuervos estado) summing (length (se-puede-mover estado x)))))))))
     resultado))
 
-
-
+(defun funcion-estatica5 (estado turno)
+  ;la idea es ir dando puntos según me guste la situación del juego y después adaptarlo según sea para MAX o MIN
+  (let ((resultado 0))
+    (cond ((es-estado-ganador estado turno 'MAX) (setf resultado *maximo-valor*))
+	  ((es-estado-ganador estado turno 'MIN) (setf resultado *minimo-valor*))
+	  ((juega-buitre :estado estado)
+	   (let ((buitre (buscar-buitre estado)))
+	     (when (faltan-cuervos :estado estado)
+	       (cond ((= buitre -1) nil);algo cuando el buitre no está puesto? TODO
+		     ((or
+		       (= buitre 2)
+		       (= buitre 3)
+		       (= buitre 5)
+		       (= buitre 6)
+		       (= buitre 7))
+		      ;si faltan cuervos por poner, me gustan más los estados del centro
+		      (setf resultado (1+ resultado)))))
+	     ;si podemos comer algun cuervo mola! si son varios EPIC!
+	     ;un punto por cada buitre que puedas comer majo
+	     (setf resultado (+ resultado (first (mejor-salto estado))))
+	     ;si estamos cerca de algun cuervo mola, un punto por cada cuervo que tengas cerca TODO seguro?
+	     (let ((max (if (>= buitre 0)
+			    (length (nth buitre *lista-movimientos*))
+			    0))
+		   (actuales (length (se-puede-mover estado buitre))))
+	       (setf resultado (+ resultado (- max actuales))))
+	     ))
+	  ((juegan-cuervos :estado estado)
+	   (cond ((faltan-cuervos :estado estado) ;faltan cuervos que poner
+		  nil)
+		 (t ;estan todos los cuervos puestos
+		  ;si no hay cuervos en cuatro esquinas, no nos gusta mucho
+		  ;si hay cuervos en cuatro esquinas mola
+		  ;un punto por cada cuervo que tengas en una esquina
+		  (loop for x in (busca-cuervos estado)
+		       when (or
+			     (= x 0)
+			     (= x 1)
+			     (= x 4)
+			     (= x 8)
+			     (= x 9))
+		       do
+		       (setf resultado (1+ resultado)))
+		  (setf resultado (+ resultado (length (busca-cuervos estado))))
+		  ;si tenemos cuervos al lado del buitre y no nos pueden comer mola TODO
+		  
+		  ;minimizar los movimientos del buitre
+		  ;si come una pero se reducen los movimientos no es tan mala
+		  ;si come más de una, no, no, no, no y no
+		  ;quitamos un punto por cada cuervo que nos pueda comer
+		  (setf resultado (- resultado (first (mejor-salto estado))))
+		  ))
+	   ))
+    ;ahora mismo resultado tiene un número mayor que cero
+    (when (equal turno 'MIN)
+	(setf resultado (* -1 resultado))) ;es MIN, así que devolvemos un valor menor que cero
+    resultado))
 	
 (setf (symbol-function 'f-e-estatica) #'funcion-estatica-aleatoria)
 (setf (symbol-function 'f-e-estatica) #'funcion-estatica1)
@@ -540,15 +603,15 @@
 		  (setf movimiento (list -2 (eval (read-from-string (concatenate 'string "'(" (read-line) ")")))))))))
     movimiento))
 
-;TODO
 (defun jugar-maquina ()
-  ;TODO crear un nodo con el estado actual y tal
-  ;TODO llamar a minimax con el nodo creado
-  ;TODO devolver el nuevo estado que devuelve minimax
-  (if (equal (nodo-jugador *nodo-actual*) 'max)
-      (setf (symbol-function 'f-e-estatica) #'f-e-estatica-max)
-      (setf (symbol-function 'f-e-estatica) #'f-e-estatica-min))
-  (let* ((profundidad (+ 3 (comidos (nodo-estado *nodo-actual*)))))
+  (if (xor *max-humano* *min-humano*)
+      ;un jugador
+      nil
+      ;maquina contra maquina
+      (if (equal (nodo-jugador *nodo-actual*) 'max)
+	  (setf (symbol-function 'f-e-estatica) #'f-e-estatica-max)
+	  (setf (symbol-function 'f-e-estatica) #'f-e-estatica-min)))
+  (let* ((profundidad (+ 6 (comidos (nodo-estado *nodo-actual*))))) ;la profundidad aumenta según los cuervos comidos
     (minimax-a-b *nodo-actual* profundidad)))
 
 (defun jugar ()
@@ -643,27 +706,27 @@
 		     (let ((salir3 nil) (opcion3 0))
 		       (loop until salir3 do
 			    (format t "Elige una función estática para la máquina.~%")
-			    (format t " 1) funcion-estatica-aleatoria~%")
-			    (format t " 2) funcion-estatica1~%")
-			    (format t " 3) funcion-estatica2~%")
-			    (format t " 4) funcion-estatica3~%")
-			    (format t " 5) funcion-estatica4~%")
-			    (format t " 6) funcion-estatica5~%")
+			    (format t " 1) funcion-estatica1~%")
+			    (format t " 2) funcion-estatica2~%")
+			    (format t " 3) funcion-estatica3~%")
+			    (format t " 4) funcion-estatica4~%")
+			    (format t " 5) funcion-estatica5~%")
+			    (format t " 6) funcion-estatica-aleatoria~%")
 			    (format t " 9) Atrás~%")
 			    (setf opcion3 (read))
 			    (cond
 			      ((= opcion3 1)
-			       (setf (symbol-function 'f-e-estatica) #'funcion-estatica-aleatoria))
-			      ((= opcion3 2)
 			       (setf (symbol-function 'f-e-estatica) #'funcion-estatica1))
-			      ((= opcion3 3)
+			      ((= opcion3 2)
 			       (setf (symbol-function 'f-e-estatica) #'funcion-estatica2))
-			      ((= opcion3 4)
+			      ((= opcion3 3)
 			       (setf (symbol-function 'f-e-estatica) #'funcion-estatica3))
-			      ((= opcion3 5)
+			      ((= opcion3 4)
 			       (setf (symbol-function 'f-e-estatica) #'funcion-estatica4))
-			      ((= opcion3 6)
+			      ((= opcion3 5)
 			       (setf (symbol-function 'f-e-estatica) #'funcion-estatica5))
+			      ((= opcion3 6)
+			       (setf (symbol-function 'f-e-estatica) #'funcion-estatica-aleatoria))
 			      ((= opcion3 9)
 			       (setf salir3 t)))
 			    (when (and (> opcion3 0) (< opcion3 9))
@@ -712,13 +775,13 @@
     (format t "~%Adiós.~%")))
 
 (defun cuervos ()
-;  (compile-file "cuervos.lisp")
-;  (load "cuervos")
+  (compile-file "cuervos.lisp")
+  (load "cuervos")
   (menu))
 
 (defun inicio ()
   (format t "Escribe (cuervos) para empezar.~%"))
 
 (inicio)
-(cuervos)
+;(cuervos)
 ;(declaim #+sbcl(sb-ext:unmuffle-conditions style-warning))
