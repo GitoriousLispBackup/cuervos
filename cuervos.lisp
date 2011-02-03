@@ -255,12 +255,17 @@
       
 (defun imprimir-tablero (&optional (nodo *nodo-actual*) (canal t))
   (let ((estado (nodo-estado nodo)))
-    (format canal "~%~%Turno ~a~%" (nodo-contador-turnos nodo))
-    (format canal "~%          ~a                        0~%~%~%" (quien-okupa 0 estado))
-    (format canal " ~a     ~a     ~a     ~a      1     2     3     4~%~%"
+    (format canal "~%~%Turno ~a~%~%" (nodo-contador-turnos nodo))
+    (format canal "          ~a                        0~%" (quien-okupa 0 estado))
+    (format canal "         . .                      . .~%")
+    (format canal "        .   .                    .   .~%")
+    (format canal " ~a  .  ~a  .  ~a  .  ~a      1  .  2  .  3  .  4~%"
 	    (quien-okupa 1 estado) (quien-okupa 2 estado) (quien-okupa 3 estado) (quien-okupa 4 estado))
+    (format canal "   .  .       .  .           .  .      .  .~%")
     (format canal "     ~a         ~a              5         6~%" (quien-okupa 5 estado) (quien-okupa 6 estado))
-    (format canal "          ~a                        7~%~%" (quien-okupa 7 estado))
+    (format canal "       .     .                  .     .~%")
+    (format canal "    .     ~a     .            .     7     .~%" (quien-okupa 7 estado))
+    (format canal "      .       .                .       .~%")
     (format canal "  ~a               ~a        8               9~%~%" (quien-okupa 8 estado) (quien-okupa 9 estado))
     (format canal "Cuervos: ~10a Buitre:~a~%" (cuervos-to-string (comidos estado) t) (cuervos-to-string (comidos estado)))
     (if (juega-buitre nodo)
