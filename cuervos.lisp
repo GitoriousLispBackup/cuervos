@@ -421,7 +421,7 @@
 	  ((equal turno 'MAX)
 	   (cond ((juega-buitre :estado estado)
 		  (setf resultado (+ resultado (first (mejor-salto estado)) (length (puede-saltar estado (buscar-buitre estado))))))
-		 (t (+ resultado (loop for x in (busca-cuervos estado) summing (length (se-puede-mover estado x)))))))
+		 (t (setf resultado (+ resultado (loop for x in (busca-cuervos estado) summing (length (se-puede-mover estado x))))))))
 	  (t
 	   (cond ((juegan-cuervos :estado estado)
 		  (setf resultado (+ resultado (first (mejor-salto estado)) (length (puede-saltar estado (buscar-buitre estado))))))
@@ -440,11 +440,12 @@
 						    (first (mejor-salto estado))))))))
 	  (t
 	   (cond ((juegan-cuervos :estado estado)
-		  (setf resultado (+ resultado (first (mejor-salto estado)) (length (puede-saltar estado (buscar-buitre estado))))))
+		  (setf resultado (+ resultado
+				     (length (se-puede-mover estado (buscar-buitre estado)))
+				     (* 2 (length (puede-saltar estado (buscar-buitre estado))))
+				     (first (mejor-salto estado)))))
 		 (t
-		  (setf resultado (- resultado (+ (length (se-puede-mover estado (buscar-buitre estado)))
-						  (* 2 (length (puede-saltar estado (buscar-buitre estado))))
-						  (first (mejor-salto estado)))))))))
+		  (setf resultado (setf resultado (+ resultado (loop for x in (busca-cuervos estado) summing (length (se-puede-mover estado x))))))))))
     resultado))
 	
 (defun funcion-estatica4 (estado turno)
@@ -459,11 +460,11 @@
 				     (first (mejor-salto estado)))))
 		 (t (setf resultado (+ resultado (loop for x in (busca-cuervos estado) summing (length (se-puede-mover estado x))))))))
 	  (t (cond ((juegan-cuervos :estado estado)
-		    (setf resultado (+ resultado
-				       (length (se-puede-mover estado (buscar-buitre estado)))
-				       (* 2 (length (puede-saltar estado (buscar-buitre estado))))
-				       (first (mejor-salto estado)))))
-		   (t (setf resultado (+ resultado (loop for x in (busca-cuervos estado) summing (length (se-puede-mover estado x)))))))))
+		    (setf resultado (+ resultado (first (mejor-salto estado)) (length (puede-saltar estado (buscar-buitre estado))))))
+		   (t (setf resultado (- resultado
+				       (+ (length (se-puede-mover estado (buscar-buitre estado)))
+					  (* 2 (length (puede-saltar estado (buscar-buitre estado))))
+					  (first (mejor-salto estado)))))))))
     resultado))
 
 (defun funcion-estatica5 (estado turno)
