@@ -496,6 +496,7 @@
     resultado))
 
 (defun funcion-estatica5 (estado turno)
+  (declare (optimize (debug 2)))
   ;la idea es ir dando puntos según me guste la situación del juego y después adaptarlo según sea para MAX o MIN
   (let ((resultado 0))
     (cond ((es-estado-ganador estado turno 'MAX) (setf resultado *maximo-valor*))

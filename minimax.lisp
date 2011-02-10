@@ -40,53 +40,78 @@
 ;    (setf (valor mejor-sucesor) mejor-valor)
 ;    mejor-sucesor))
 
+(setf *buscando* 0)
+(defun buscando ()
+  (format t "Pensando")
+  (dotimes (c *buscando*)
+    (princ "."))
+  (setf *buscando* (mod (1+ *buscando*) 4))
+  (write-char #\Return))
+  
 ;; Algoritmo MINIMAX con poda ALFA-BETA
 (defun minimax-a-b (nodo profundidad
 		    &optional (alfa *minimo-valor*)
 		    (beta *maximo-valor*))
+  (buscando)
   (if (or
        (es-estado-final (nodo-estado nodo))
        (= profundidad 0))
       (crea-nodo :valor (f-e-estatica (nodo-estado nodo) (nodo-jugador nodo)))
-      (let ((sucesores (sucesores nodo)))
-        (if (null sucesores)
+      (let ((lsucesores (sucesores nodo)))
+        (if (null lsucesores)
 	    (progn
 	     (format t "Sucesores vacío~%")
 	     (crea-nodo :valor (f-e-estatica (nodo-estado nodo) (nodo-jugador nodo))))
             (if (eq (nodo-jugador nodo) 'max)
                 (maximizador-a-b
-                 (sort sucesores #'> :key (lambda (nodo) (f-e-estatica (nodo-estado nodo) 'min)))
+                 (sort lsucesores #'> :key (lambda (nodo) (f-e-estatica (nodo-estado nodo) 'min)))
                  profundidad alfa beta)
                 (minimizador-a-b
-                 (sort sucesores #'< :key (lambda (nodo) (f-e-estatica (nodo-estado nodo) 'max)))
+                 (sort lsucesores #'< :key (lambda (nodo) (f-e-estatica (nodo-estado nodo) 'max)))
                  profundidad alfa beta))))))
+
+(defun elegir-aleatoriamente (lista)
+  (if (= 1 (length lista))
+      (first lista)
+      (nth (random (length lista)) lista)))
 
 ;; Funcion que busca maximizar (MAX) la puntuacion con ALFA-BETA
 (defun maximizador-a-b (sucesores profundidad alfa beta)
-  (let ((mejor-sucesor (first sucesores))
-        (valor 0))
+  (let ((mejores-sucesores (list (first sucesores)))
+        (valor 0)
+	(mejor nil))
     (loop for sucesor in sucesores do
 	 (setf valor
 	       (nodo-valor (minimax-a-b sucesor (1- profundidad) alfa beta)))
+	 (when (= valor alfa)
+	   ;mismo valor mejor, añadir a la lista
+	   (setf mejores-sucesores (cons sucesor mejores-sucesores)))
 	 (when (> valor alfa)
+	   ;mejor valor, nueva lista con este nodo
 	   (setf alfa valor)
-	   (setf mejor-sucesor sucesor))
+	   (setf mejores-sucesores (list sucesor)))
 	 (when (>= alfa beta)
+	   ;podar
 	   (return)))
-    (setf (nodo-valor mejor-sucesor) alfa)
-    mejor-sucesor))
+    (setf mejor (elegir-aleatoriamente mejores-sucesores))
+    (setf (nodo-valor mejor) alfa)
+    mejor))
 
 ;; Funcion que busca minimizar (MIN) la puntuacion con ALFA-BETA
 (defun minimizador-a-b (sucesores profundidad alfa beta)
-  (let ((mejor-sucesor (first sucesores))
-        (valor 0))
+  (let ((mejores-sucesores (list (first sucesores)))
+        (valor 0)
+	(mejor nil))
     (loop for sucesor in sucesores do
 	 (setf valor
 	       (nodo-valor (minimax-a-b sucesor (1- profundidad) alfa beta)))
+	 (when (= valor beta)
+	   (setf mejores-sucesores (cons sucesor mejores-sucesores)))
 	 (when (< valor beta)
 	   (setf beta valor)
-	   (setf mejor-sucesor sucesor))
+	   (setf mejores-sucesores (list sucesor)))
 	 (when (>= alfa beta)
 	   (return)))
-    (setf (nodo-valor mejor-sucesor) beta)
-    mejor-sucesor))
+    (setf mejor (elegir-aleatoriamente mejores-sucesores))
+    (setf (nodo-valor mejor) beta)
+    mejor))
