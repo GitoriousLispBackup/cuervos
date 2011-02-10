@@ -112,27 +112,37 @@
 (defun contrario (jugador)
   (if (eq jugador 'max) 'min 'max))
 
+;; Devuelve el numero de buitres comidos
 (defun comidos (estado)
   (nth 10 estado))
 
+;; Devuelve el jugador actual  
 (defun jugador-actual ()
   (nodo-jugador *nodo-actual*))
 
+  
+;; Devuelve T si es el turno de los cuervos  
 (defun juegan-cuervos (&optional (nodo *nodo-actual*) (estado nil))
   (oddp (if estado
 	    (nth 11 estado)
 	    (nodo-contador-turnos nodo))))
 
+		
+;; Devuelve T si es el turno del buitre		
 (defun juega-buitre (&optional (nodo *nodo-actual*) (estado nil))
   (evenp (if estado
 	     (nth 11 estado)
 	     (nodo-contador-turnos nodo))))
 
+		 
+;; Devuelve T si aun faltan cuervos por colocar en el tablero		 
 (defun faltan-cuervos (&optional (nodo *nodo-actual*) (estado nil))
   (< (if estado
 	 (nth 11 estado)
 	 (nodo-contador-turnos nodo)) 14))
 
+	 
+;; Devuelve la posicion actual del buitre	 
 (defun buscar-buitre (estado)
   (let ((resultado -1))
     (loop for i from 0 to 9
@@ -143,11 +153,15 @@
 	   (t nil)))
     resultado))
 
+	
+;; Devuelve una lista con la posicion de todos los cuervos	
 (defun busca-cuervos (estado)
   (loop for x from 0 to 9
      when (equal (nth x estado) 'C)
      collect x))
 
+	 
+;; Devuelve una lista con los posibles movimientos de una ficha colocada en la casilla i	 
 (defun se-puede-mover (estado i)
   (when (< i 0)
     (return-from se-puede-mover (list)))
@@ -155,6 +169,8 @@
      when (equal (nth x estado) 0)
      collect x))
 
+	 
+;; Devuelve una lista con los posibles saltos que podria realizar el buitre desde la casilla i	 
 (defun puede-saltar (estado i)
   (when (< i 0)
     (return-from puede-saltar))
@@ -164,6 +180,8 @@
 	   (equal (nth (aref *matriz-saltos* i x) estado) 'C)) ;hay un cuervo en el salto
      collect x))
 
+	 
+;; Ejecuta un salto	 
 (defun salto-sencillo (estado i j)
   (let ((nuevo (copy-seq estado)))
     (setf (nth i nuevo) 0) ;origen a 0
@@ -172,6 +190,8 @@
     (setf (nth 10 nuevo) (1+ (nth 10 nuevo))) ;aumentar contador de saltos
     nuevo))
 
+	
+;;	Devuelve los saltos posibles del buitre desde el nodo actual, teniendo en cuenta saltos multiples... creo
 (defun saltos (&optional (estado (nodo-estado *nodo-actual*)))
   ;las defino dentro porque no tienen sentido fuera de esta funcion
   ;crea las listas de los saltos
@@ -191,6 +211,8 @@
 
   (mapcar #'saltos-r2 (saltos-r estado (buscar-buitre estado))))
 
+  
+ ;; Devuelve el mejor salto que puede realizar el buitre desde su posicion actual 
 (defun mejor-salto (&optional (estado (nodo-estado *nodo-actual*)))
   (let ((long 0)
 	(camino nil))
@@ -200,6 +222,8 @@
 	 (setf long (length un-camino)))
     (list long camino)))
 
+	
+;; Realiza un salto múltiple	
 (defun salto-multiple (estado i j)
   (let* ((saltos-posibles (saltos estado))
 	 (este-salto (find-if #'(lambda(x) (member j x)) saltos-posibles)))
@@ -218,6 +242,8 @@
 
 (salto-multiple '(0 B C 0 0 0 C C 0 0 0 6) 1 9)
 
+
+;; Devuelve los posibles saltos multiples desde una casilla i
 (defun puede-saltar-multiple (estado i)
   (let ((resultado (list)))
     (loop for salto in (saltos estado)
@@ -240,6 +266,8 @@
 
 (dividir-saltos '((1 3 9)(4)))
 
+
+;; Devuelve quien ocupa una casilla n, o el propio n si esa casilla está vacía
 (defun quien-okupa (n estado)
   (let ((a (nth n estado)))
     (cond ((equal a 0) n)
