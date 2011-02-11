@@ -40,19 +40,10 @@
 ;    (setf (valor mejor-sucesor) mejor-valor)
 ;    mejor-sucesor))
 
-(setf *buscando* 0)
-(defun buscando ()
-  (format t "Pensando")
-  (dotimes (c *buscando*)
-    (princ "."))
-  (setf *buscando* (mod (1+ *buscando*) 4))
-  (write-char #\Return))
-  
 ;; Algoritmo MINIMAX con poda ALFA-BETA
 (defun minimax-a-b (nodo profundidad
 		    &optional (alfa *minimo-valor*)
 		    (beta *maximo-valor*))
-  (buscando)
   (if (or
        (es-estado-final (nodo-estado nodo))
        (= profundidad 0))
