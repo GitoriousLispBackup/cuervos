@@ -2,7 +2,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Variables globales ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
-
+(defvar *canal* t);canal por defecto para la salida
 (defvar *nodo-actual*)
 ;max es la maquina
 ;min es el humano
@@ -10,6 +10,8 @@
 
 (defvar *max-humano* nil)
 (defvar *min-humano* t)
+
+(defvar *profundidad-inicial* 3)
 
 ;el tablero se representa como un array de tamaño 10, el numero de casillas que hay con C o B o nil
 ; más una posicion más con el numero de cuervos comidos
@@ -86,13 +88,13 @@
   valor) ;valor de la funcion estatica
 
 ;; Funcion que muestra por pantalla (u otro canal) el nodo dado
-(defun escribe-nodo (nodo &optional (canal t) profundidad)
+(defun escribe-nodo (nodo &optional (canal *canal*) profundidad)
   (format canal "Estado del nodo: ~a~%" (nodo-estado nodo))
   (format canal "Jugador del nodo: ~a~%" (nodo-jugador nodo))
   (format canal "Turnos del nodo: ~a~%" (nodo-contador-turnos nodo))
   (imprimir-tablero nodo canal))
 
-(defun escribe-nodo-short (nodo &optional (canal t) profundidad)
+(defun escribe-nodo-short (nodo &optional (canal *canal*) profundidad)
   (format canal "Nodo: ~a ~a" (nodo-estado nodo) (nodo-jugador nodo)))
 
 ;; Funcion que inicializa *nodo-inicial*
@@ -281,7 +283,7 @@
     (setf lista (loop for a from 1 to limit collect 'C))
     (format nil "~{~a~}" lista)))
       
-(defun imprimir-tablero (&optional (nodo *nodo-actual*) (canal t))
+(defun imprimir-tablero (&optional (nodo *nodo-actual*) (canal *canal*))
   (let ((estado (nodo-estado nodo)))
     (format canal "~%~%Turno ~a~%~%" (nodo-contador-turnos nodo))
     (format canal "          ~a                        0~%" (quien-okupa 0 estado))
@@ -524,6 +526,7 @@
 	       (setf resultado (+ resultado (- max actuales))))
 	     ))
 	  ((juegan-cuervos :estado estado)
+	   ;TODO tener en cuenta que si me han comido cuervos, ya no me gusta tanto que estén en las esquinas, no terminará nunca
 	   (cond ((faltan-cuervos :estado estado) ;faltan cuervos que poner
 		  nil)
 		 (t ;estan todos los cuervos puestos
@@ -558,7 +561,6 @@
     resultado))
 	
 (setf (symbol-function 'f-e-estatica) #'funcion-estatica-aleatoria)
-(setf (symbol-function 'f-e-estatica) #'funcion-estatica1)
 (setf (symbol-function 'f-e-estatica-max) #'funcion-estatica-aleatoria)
 (setf (symbol-function 'f-e-estatica-min) #'funcion-estatica-aleatoria)
 
@@ -580,8 +582,9 @@
 	       (loop for i from 0 to 9 do (push (list -3 i) movimientos))
 	       (progn
 		 (loop for i from 0 to 9 do (push (list -2 (list i)) movimientos)) ;movimientos o saltos sencillos
-		 (mapcar #'(lambda(x) (push (list -2 x) movimientos)) (dividir-saltos (saltos (nodo-estado nodo))))
-		 )))
+		 (mapcar #'(lambda(x)
+			     (push (list -2 x) movimientos))
+			 (dividir-saltos (saltos (nodo-estado nodo)))))))
 	  ((juegan-cuervos nodo)
 	   ;si es cuervos
 	   (cond ((faltan-cuervos nodo)
@@ -594,7 +597,9 @@
 		  (let ((cuervos (busca-cuervos (nodo-estado nodo))))
 		    (loop for c in cuervos do
 			 (setf movimientos
-			       (append movimientos (mapcar #'(lambda(x) (list c x)) (nth c *lista-movimientos*))))))))))
+			       (append movimientos (mapcar #'(lambda(x)
+							       (list c x))
+							   (nth c *lista-movimientos*))))))))))
     (setf movimientos (reverse movimientos))
     ;mirar qué movimientos son posibles con aplica-movimiento
     (loop for movimiento in movimientos do
@@ -652,7 +657,7 @@
       (if (equal (nodo-jugador *nodo-actual*) 'max)
 	  (setf (symbol-function 'f-e-estatica) #'f-e-estatica-max)
 	  (setf (symbol-function 'f-e-estatica) #'f-e-estatica-min)))
-  (let* ((profundidad (+ 6 (comidos (nodo-estado *nodo-actual*))))) ;la profundidad aumenta según los cuervos comidos
+  (let* ((profundidad (+ *profundidad-inicial* (comidos (nodo-estado *nodo-actual*))))) ;la profundidad aumenta según los cuervos comidos
     (minimax-a-b *nodo-actual* profundidad)))
 
 (defun jugar ()
@@ -685,16 +690,19 @@
 ;    (setf *estado-actual* nuevo-estado)))
 
 (defun imprimir-fin-juego ()
-  (format t "*** ¡El juego ha terminado! ***~%")
+  (format *canal* "*** ¡El juego ha terminado! ***~%")
   (imprimir-tablero)
   (if (oddp (1- (nodo-contador-turnos)))
-      (format t "¡Los cuervos ganan!~%~%")
-      (format t "¡El buitre gana!~%~%")))
+      (format *canal* "¡Los cuervos ganan!~%~%")
+      (format *canal* "¡El buitre gana!~%~%")))
 
 (defun juego ()
   (crea-nodo-inicial)
+  (format t "~%")
   (let ((fin-juego nil))
     (loop until fin-juego do
+	 (when (not (equal *canal* t))
+	   (format t "Turno ~a~%" (nodo-contador-turnos)))
 	 (jugar)
 	 (when (es-estado-final (nodo-estado *nodo-actual*))
 	     (setf fin-juego t))
@@ -821,7 +829,38 @@
   (menu))
 
 (defun inicio ()
-  (format t "Escribe (cuervos) para empezar.~%"))
+  (format t "~%Escribe (cuervos) para ver el menú de juego,~%o bien empieza una partida automática con (partidas-auto).~%Si quieres ver las estáticas que hay escribe (estaticas)~%~%"))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Partidas automaticas ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun estaticas ()
+  (format t "Funciones estaticas disponibles:~%")
+  (format t " - funcion-estatica-aleatoria~%")
+  (format t " - funcion-estatica1~%")
+  (format t " - funcion-estatica2~%")
+  (format t " - funcion-estatica3~%")
+  (format t " - funcion-estatica4~%")
+  (format t " - funcion-estatica5~%"))
+
+(defun partidas-auto (buitre-es estatica-buitre estatica-cuervos)
+  (setf *canal* (open "/tmp/partida.log" :direction :output :if-exists :supersede))
+  (format t "La salida de la partida esta en /tmp/partida.log~%")
+  (setf *max-humano* nil)
+  (setf *min-humano* nil)
+  (if (equal buitre-es 'max)
+      (progn
+	(setf *jugador-inicial* 'min)
+	(setf (symbol-function 'f-e-estatica-max) estatica-buitre)
+	(setf (symbol-function 'f-e-estatica-min) estatica-cuervos))
+      (progn
+	(setf *jugador-inicial* 'max)
+	(setf (symbol-function 'f-e-estatica-min) estatica-buitre)
+	(setf (symbol-function 'f-e-estatica-max) estatica-cuervos)))
+  (juego)
+  (close *canal*)
+  (setf *canal* t))
 
 (inicio)
 ;(cuervos)
