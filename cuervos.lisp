@@ -2,7 +2,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Variables globales ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defvar *canal* t);canal por defecto para la salida
+
+(defvar *canal* t) ;canal por defecto para la salida
 (defvar *nodo-actual*)
 ;max es la maquina
 ;min es el humano
@@ -11,7 +12,10 @@
 (defvar *max-humano* nil)
 (defvar *min-humano* t)
 
-(defvar *profundidad-inicial* 3)
+(defvar *profundidad-inicial* 6)
+
+(defvar *p* 0)
+(defvar *debug* nil)
 
 ;el tablero se representa como un array de tamaño 10, el numero de casillas que hay con C o B o nil
 ; más una posicion más con el numero de cuervos comidos
@@ -109,6 +113,17 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Funciones auxiliares ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun dbg (text &rest args)
+  (when *debug*
+    (dotimes (x *p*) (format t "   "))
+    (apply #'format t text args)))
+
+(defun dbg-izq ()
+  (setf *p* (1- *p*)))
+
+(defun dbg-der ()
+  (setf *p* (1+ *p*)))
 
 ;; Devuelve el jugador contrario al dado
 (defun contrario (jugador)
@@ -314,6 +329,8 @@
 
 (defun 2+ (x) (+ 2 x))
 (defun 2- (x) (- x 2))
+(defun 2* (x) (* 2 x))
+
 
 ;;;;;;;;;;;;;;;;;;;;
 ;;; Estados, etc :::
@@ -419,8 +436,8 @@
   
 (defun funcion-estatica1 (estado turno)
   (let ((resultado 0))
-    (cond ((es-estado-ganador estado turno 'MAX) (return-from funcion-estatica1 *maximo-valor*))
-	  ((es-estado-ganador estado turno 'MIN) (return-from funcion-estatica1 *minimo-valor*))
+    (cond ((es-estado-ganador estado turno 'MAX) (return-from funcion-estatica1 *minimo-valor*))
+	  ((es-estado-ganador estado turno 'MIN) (return-from funcion-estatica1 *maximo-valor*))
 	  ((equal turno 'MAX) ;el resultado tiene que ser el mayor posible para el jugador actual
 	   (cond ((juega-buitre :estado estado)
 		  (setf resultado (+ resultado
@@ -446,8 +463,8 @@
 
 (defun funcion-estatica2 (estado turno)
   (let ((resultado 0))
-    (cond ((es-estado-ganador estado turno 'MAX) (return-from funcion-estatica2 *maximo-valor*))
-	  ((es-estado-ganador estado turno 'MIN) (return-from funcion-estatica2 *minimo-valor*))
+    (cond ((es-estado-ganador estado turno 'MAX) (return-from funcion-estatica2 *minimo-valor*))
+	  ((es-estado-ganador estado turno 'MIN) (return-from funcion-estatica2 *maximo-valor*))
 	  ((equal turno 'MAX)
 	   (cond ((juega-buitre :estado estado)
 		  (setf resultado (+ resultado (first (mejor-salto estado)) (length (puede-saltar estado (buscar-buitre estado))))))
@@ -488,19 +505,66 @@
 				     (length (se-puede-mover estado (buscar-buitre estado)))
 				     (* 2 (length (puede-saltar estado (buscar-buitre estado))))
 				     (first (mejor-salto estado)))))
-		 (t (setf resultado (+ resultado (loop for x in (busca-cuervos estado) summing (length (se-puede-mover estado x))))))))
-	  (t (cond ((juegan-cuervos :estado estado)
-		    (setf resultado (+ resultado (first (mejor-salto estado)) (length (puede-saltar estado (buscar-buitre estado))))))
-		   (t (setf resultado (- resultado
-				       (+ (length (se-puede-mover estado (buscar-buitre estado)))
-					  (* 2 (length (puede-saltar estado (buscar-buitre estado))))
-					  (first (mejor-salto estado)))))))))
+		 (t
+		  (setf resultado (+
+				   resultado
+				   (loop for x in (busca-cuervos estado)
+				      summing (length (se-puede-mover estado x))))))))
+	  (t
+	   (cond ((juegan-cuervos :estado estado)
+		  (setf resultado (+ resultado (first (mejor-salto estado)) (length (puede-saltar estado (buscar-buitre estado))))))
+		 (t
+		  (setf resultado (- resultado
+				     (+ (length (se-puede-mover estado (buscar-buitre estado)))
+					(* 2 (length (puede-saltar estado (buscar-buitre estado))))
+					(first (mejor-salto estado)))))))))
     resultado))
+
+(defun funcion-estatica5bis (estado turno)
+  (declare (optimize (debug 2)))
+  (let ((resultado 0)
+	(buitre (buscar-buitre estado))
+	(cuervos (busca-cuervos estado))
+	(temp 0))
+    (cond ((es-estado-ganador estado turno 'MAX) (setf resultado *minimo-valor*))
+	  ((es-estado-ganador estado turno 'MIN) (setf resultado *maximo-valor*))
+	  ((juega-buitre :estado estado)
+	   ;dos puntos por cada movimiento que pueda hacer el buitre
+	   (setf resultado (+ resultado (* 2 (length (se-puede-mover estado buitre)))))
+	   ;cinco puntos por cada salto que pueda hacer
+	   (setf resultado (+ resultado (* 50 (length (puede-saltar-multiple estado buitre)))))
+	   )
+	  ((juegan-cuervos :estado estado)
+	   (cond ((faltan-cuervos :estado estado)
+		  (loop for x in cuervos
+		     when (or
+			   (= x 0) (= x 1) (= x 4)
+			   (= x 8) (= x 9))
+		     do
+		       (setf temp (+ 100 temp)))
+		  ;pero sólo cuatro! en las cinco esquinas es un poco perder un cuervo
+		  (when (= 500 temp)
+		    (setf temp (- temp 150)))
+		  (setf resultado (+ resultado temp))
+		  ;diez puntos por cada salto que pueda hacer
+		  (setf resultado (- resultado (* 100 (length (puede-saltar-multiple estado buitre))))))
+		 (t
+		  ;dos puntos por cada movimiento que pueda hacer el buitre
+		  (setf resultado (- resultado (* 1 (length (se-puede-mover estado buitre)))))
+		  ;diez puntos por cada salto que pueda hacer
+		  (setf resultado (- resultado (* 10 (length (puede-saltar-multiple estado buitre)))))))
+	   ))
+    (when (equal turno 'min)
+      (setf resultado (* -1 resultado)))
+    resultado))
+	  
 
 (defun funcion-estatica5 (estado turno)
   (declare (optimize (debug 2)))
   ;la idea es ir dando puntos según me guste la situación del juego y después adaptarlo según sea para MAX o MIN
-  (let ((resultado 0))
+  (let ((resultado 0)
+	(buitre-en -1)
+	(cuervos-en (list)))
     (cond ((es-estado-ganador estado turno 'MAX) (setf resultado *maximo-valor*))
 	  ((es-estado-ganador estado turno 'MIN) (setf resultado *minimo-valor*))
 	  ((juega-buitre :estado estado)
@@ -528,12 +592,28 @@
 	  ((juegan-cuervos :estado estado)
 	   ;TODO tener en cuenta que si me han comido cuervos, ya no me gusta tanto que estén en las esquinas, no terminará nunca
 	   (cond ((faltan-cuervos :estado estado) ;faltan cuervos que poner
-		  nil)
+		  ;le doy mucha importancia a cuatro cuervos en las esquinas
+		  (loop for x in cuervos-en
+		       when (or
+			     (= x 0)
+			     (= x 1)
+			     (= x 4)
+			     (= x 8)
+			     (= x 9))
+		       do
+		       (setf resultado (+ 5 resultado))) ;con 2 le doy más importancia
+		  ;(setf resultado (+ resultado (length cuervos-en)))
+		  ;pero sólo cuatro! en las cinco esquinas es un poco perder un cuervo
+		  (when (= 5 (length cuervos-en))
+		    (setf resultado (- resultado 10)))
+		  )
 		 (t ;estan todos los cuervos puestos
+		  (setf buitre-en (buscar-buitre estado))
+		  (setf cuervos-en (busca-cuervos estado))
 		  ;si no hay cuervos en cuatro esquinas, no nos gusta mucho
 		  ;si hay cuervos en cuatro esquinas mola
-		  ;un punto por cada cuervo que tengas en una esquina
-		  (loop for x in (busca-cuervos estado)
+		  ;dos puntos por cada cuervo que tengas en una esquina
+		  (loop for x in cuervos-en
 		       when (or
 			     (= x 0)
 			     (= x 1)
@@ -542,22 +622,25 @@
 			     (= x 9))
 		       do
 		       (setf resultado (2+ resultado))) ;con 2 le doy más importancia
-		  (setf resultado (+ resultado (length (busca-cuervos estado))))
+		  ;(setf resultado (+ resultado (length cuervos-en)))
 		  ;pero sólo cuatro! en las cinco esquinas es un poco perder un cuervo
-		  (when (= 5 (length (busca-cuervos estado)))
+		  (when (= 5 (length cuervos-en))
 		    (setf resultado (2- resultado)))
 		  ;si tenemos cuervos al lado del buitre y no nos pueden comer mola TODO
-		  
+
 		  ;minimizar los movimientos del buitre
-		  ;si come una pero se reducen los movimientos no es tan mala
-		  ;si come más de una, no, no, no, no y no
-		  ;quitamos un punto por cada cuervo que nos pueda comer
-		  (setf resultado (- resultado (first (mejor-salto estado))))
+		  ;si movimientos posibles > movimientos reales
+		  (when (> (length (nth buitre-en *lista-movimientos*)) (length (se-puede-mover estado buitre-en)))
+		    (setf resultado (2+ resultado)))
 		  ))
+	   ;si el buitre come más de una, no, no, no, no y no
+	   ;quitamos dos puntos por cada cuervo que nos pueda comer
+	   (setf resultado (- resultado (* 5 (length (puede-saltar-multiple estado buitre-en)))))
+	   ;(setf resultado (- resultado (first (mejor-salto estado))))
 	   ))
     ;ahora mismo resultado tiene un número mayor que cero
-    (when (equal turno 'MIN)
-	(setf resultado (* -1 resultado))) ;es MIN, así que devolvemos un valor menor que cero
+;    (when (equal turno 'MIN)
+;	(setf resultado (* -1 resultado))) ;es MIN, así que devolvemos un valor menor que cero
     resultado))
 	
 (setf (symbol-function 'f-e-estatica) #'funcion-estatica-aleatoria)
@@ -614,6 +697,7 @@
 	       :jugador (contrario (nodo-jugador nodo)))
 	      resultado))))
 ;    (format t "Movimientos posibles: ~a~%" (length resultado))
+    (dbg "~a sucesores para ~a~%" (length resultado) (nodo-jugador nodo))
     (reverse resultado)))
 
 (load "minimax.lisp")
@@ -637,8 +721,8 @@
 		  (format t "¿Destino?~%")
 		  (setf movimiento (list (first movimiento) (read))))))
 	  ((juega-buitre)
-	   (format t "Saltos posibles: ~a~%" (saltos))
-	   (format t "Mejor salto: long ~a, camino ~a~%" (first (mejor-salto)) (second (mejor-salto)))
+;	   (format t "Saltos posibles: ~a~%" (saltos))
+;	   (format t "Mejor salto: long ~a, camino ~a~%" (first (mejor-salto)) (second (mejor-salto)))
 	   (cond ((= (nodo-contador-turnos) 2)
 		  ;poner el buitre
 		  (format t "Tienes que poner el buitre. ¿Dónde?~%")
@@ -650,6 +734,7 @@
     movimiento))
 
 (defun jugar-maquina ()
+  (dbg "Esta máquina juega con ~a~%" (nodo-jugador *nodo-actual*))
   (if (xor *max-humano* *min-humano*)
       ;un jugador
       nil
@@ -679,7 +764,9 @@
 			 :estado nuevo-estado
 			 :jugador (contrario (nodo-jugador *nodo-actual*)))))))
 	  (t
-	   (setf nuevo-nodo (jugar-maquina))))
+	   (setf nuevo-nodo (jugar-maquina))
+	   (dbg "Nodo elegido con valor ~a~%" (nodo-valor nuevo-nodo))
+	   ))
     (setf *nodo-actual* nuevo-nodo)))
     ;ejecutar el movimiento, lo hacemos arriba ya
     ;(setf nuevo-estado (aplica-movimiento movimiento *estado-actual*))
@@ -690,7 +777,7 @@
 ;    (setf *estado-actual* nuevo-estado)))
 
 (defun imprimir-fin-juego ()
-  (format *canal* "*** ¡El juego ha terminado! ***~%")
+  (format *canal* "~%~%*** ¡El juego ha terminado! ***~%")
   (imprimir-tablero)
   (if (oddp (1- (nodo-contador-turnos)))
       (format *canal* "¡Los cuervos ganan!~%~%")
@@ -725,7 +812,9 @@
 	 (format t " 1) Humano contra Humano~%")
 	 (format t " 2) Humano contra Máquina~%")
 	 (format t " 3) Máquina contra Máquina~%")
-	 (format t " 4) Salir~%")
+	 (format t " 4) Debug está ~aactivado~%" (if (not *debug*) "des" ""))
+	 (format t " 5) Profundidad inicial: ~a~%" *profundidad-inicial*)
+	 (format t "~% 9) Salir~%")
 	 (setf opcion (read))
 	 (cond
 	   ((= opcion 1)
@@ -740,7 +829,7 @@
 		   (format t "~%¿Con quién jugará la máquina?~%")
 		   (format t " 1) El buitre~%")
 		   (format t " 2) Los cuervos~%")
-		   (format t " 3) Atrás~%")
+		   (format t "~% 9) Atrás~%")
 		   (setf opcion2 (read))
 		   (cond
 		     ((= opcion2 1)
@@ -749,7 +838,7 @@
 		     ((= opcion2 2)
 		      (format t "La máquina jugará con los cuervos~%")
 		      (setf *jugador-inicial* 'max))
-		     ((= opcion2 3)
+		     ((= opcion2 9)
 		      (setf salir2 t)))
 		   (when (or (= opcion2 1) (= opcion2 2))
 		     (let ((salir3 nil) (opcion3 0))
@@ -761,7 +850,7 @@
 			    (format t " 4) funcion-estatica4~%")
 			    (format t " 5) funcion-estatica5~%")
 			    (format t " 6) funcion-estatica-aleatoria~%")
-			    (format t " 9) Atrás~%")
+			    (format t "~% 9) Atrás~%")
 			    (setf opcion3 (read))
 			    (cond
 			      ((= opcion3 1)
@@ -789,37 +878,48 @@
 	      (defun ia-a-texto (ia)
 		(cond ((= ia 0) "aleatoria")
 		      ((= ia 1) "agresiva")
-		      ((= ia 2) "defensiva")))
-	      (defun cambiar-ia1 ()
-		(setf ia1 (mod (1+ ia1) 3))
+		      ((= ia 2) "defensiva")
+		      ((= ia 3) "otra")))
+	      (defun cambiar-ia1 () ;cuervos
+		(setf ia1 (mod (1+ ia1) 4))
 		(cond ((= ia1 0)
 		       (setf (symbol-function 'f-e-estatica-max) #'funcion-estatica-aleatoria))
 		      ((= ia1 1)
-		       (setf (symbol-function 'f-e-estatica-max) #'funcion-estatica1))
+		       (setf (symbol-function 'f-e-estatica-max) #'funcion-estatica3))
 		      ((= ia1 2)
-		       (setf (symbol-function 'f-e-estatica-max) #'funcion-estatica2))))
-	      (defun cambiar-ia2 ()
-		(setf ia2 (mod (1+ ia2) 3))
+		       (setf (symbol-function 'f-e-estatica-max) #'funcion-estatica2))
+		      ((= ia1 3)
+		       (setf (symbol-function 'f-e-estatica-max) #'funcion-estatica5))))
+	      (defun cambiar-ia2 () ;buitre
+		(setf ia2 (mod (1+ ia2) 4))
 		(cond ((= ia2 0)
 		       (setf (symbol-function 'f-e-estatica-min) #'funcion-estatica-aleatoria))
 		      ((= ia2 1)
 		       (setf (symbol-function 'f-e-estatica-min) #'funcion-estatica3))
 		      ((= ia2 2)
-		       (setf (symbol-function 'f-e-estatica-min) #'funcion-estatica4))))
+		       (setf (symbol-function 'f-e-estatica-min) #'funcion-estatica1))
+		      ((= ia2 3)
+		       (setf (symbol-function 'f-e-estatica-min) #'funcion-estatica5))))
 	      (loop until salir2 do
 		   (format t "** Partida Máquina contra Máquina **~%")
-		   (format t " 1) IA Máquina de los cuervos (aleatoria, agresiva, defensiva): ~a~%" (ia-a-texto ia1))
-		   (format t " 2) IA Máquina del buitre (aleatoria, agresiva, defensiva): ~a~%" (ia-a-texto ia2))
-		   (format t " 3) ¡Jugar!~%~%")
-		   (format t " 4) Atrás~%")
+		   (format t " 1) IA Máquina de los cuervos (aleatoria, agresiva, defensiva, otra): ~a~%" (ia-a-texto ia1))
+		   (format t " 2) IA Máquina del buitre (aleatoria, agresiva, defensiva, otra): ~a~%" (ia-a-texto ia2))
+		   (format t " 3) ¡Jugar!~%")
+		   (format t "~% 9) Atrás~%")
 		   (setf opcion2 (read))
 		   (cond
 		     ((= opcion2 1) (cambiar-ia1))
 		     ((= opcion2 2) (cambiar-ia2))
 		     ((= opcion2 3) (juego))
-		     ((= opcion2 4)
+		     ((= opcion2 9)
 		      (setf salir2 t))))))
 	   ((= opcion 4)
+	    (setf *debug* (not *debug*)))
+	   ((= opcion 5)
+	    (format t "La profundidad actual es ~a~%" *profundidad-inicial*)
+	    (format t "Introduce una nueva profundidad:~%")
+	    (setf *profundidad-inicial* (read)))
+	   ((= opcion 9)
 	    (setf salir t))))
     (format t "~%Adiós.~%")))
 

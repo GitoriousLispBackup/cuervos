@@ -44,30 +44,43 @@
 (defun minimax-a-b (nodo profundidad
 		    &optional (alfa *minimo-valor*)
 		    (beta *maximo-valor*))
-  (if (or
-       (es-estado-final (nodo-estado nodo))
-       (= profundidad 0))
-      (crea-nodo :valor (f-e-estatica (nodo-estado nodo) (nodo-jugador nodo)))
-      (let ((lsucesores (sucesores nodo)))
-        (if (null lsucesores)
-	    (progn
-	     (format t "Sucesores vacío~%")
-	     (crea-nodo :valor (f-e-estatica (nodo-estado nodo) (nodo-jugador nodo))))
-            (if (eq (nodo-jugador nodo) 'max)
-                (maximizador-a-b
-                 (sort lsucesores #'> :key (lambda (nodo) (f-e-estatica (nodo-estado nodo) 'min)))
-                 profundidad alfa beta)
-                (minimizador-a-b
-                 (sort lsucesores #'< :key (lambda (nodo) (f-e-estatica (nodo-estado nodo) 'max)))
-                 profundidad alfa beta))))))
+  (dbg-der)
+  (let ((nodo-elegido nil))
+    (if (or
+	 (es-estado-final (nodo-estado nodo))
+	 (= profundidad 0))
+	(progn
+;	  (dbg "Final o profundidad limite~%")
+	  (setf nodo-elegido (crea-nodo :valor (f-e-estatica (nodo-estado nodo) (nodo-jugador nodo))
+					:jugador (nodo-jugador nodo))))
+	(let ((lsucesores (sucesores nodo)))
+	  (if (endp lsucesores)
+	      (progn
+		(format t "Sucesores vacío~%")
+		(setf nodo-elegido (crea-nodo :valor (f-e-estatica (nodo-estado nodo) (nodo-jugador nodo))
+					      :jugador (nodo-jugador nodo))))
+	      (if (eq (nodo-jugador nodo) 'max)
+		  (setf nodo-elegido
+			(maximizador-a-b
+			 (sort lsucesores #'> :key (lambda (x) (f-e-estatica (nodo-estado x) 'min)))
+			 profundidad alfa beta))
+		  (setf nodo-elegido
+			(minimizador-a-b
+			 (sort lsucesores #'< :key (lambda (x) (f-e-estatica (nodo-estado x) 'max)))
+			 profundidad alfa beta))))))
+    (dbg "Nodo ~a valor ~a~%" (nodo-jugador nodo-elegido) (nodo-valor nodo-elegido))
+    (dbg-izq)
+    nodo-elegido))
 
 (defun elegir-aleatoriamente (lista)
+;  (dbg "~a nodos candidatos~%" (length lista))
   (if (= 1 (length lista))
       (first lista)
       (nth (random (length lista)) lista)))
 
 ;; Funcion que busca maximizar (MAX) la puntuacion con ALFA-BETA
 (defun maximizador-a-b (sucesores profundidad alfa beta)
+;  (dbg "maximizar~%")
   (let ((mejores-sucesores (list (first sucesores)))
         (valor 0)
 	(mejor nil))
@@ -81,15 +94,16 @@
 	   ;mejor valor, nueva lista con este nodo
 	   (setf alfa valor)
 	   (setf mejores-sucesores (list sucesor)))
-	 (when (>= alfa beta)
-	   ;podar
-	   (return)))
+	 (when (>= alfa beta) ;podar
+	   (return))
+)
     (setf mejor (elegir-aleatoriamente mejores-sucesores))
     (setf (nodo-valor mejor) alfa)
     mejor))
 
 ;; Funcion que busca minimizar (MIN) la puntuacion con ALFA-BETA
 (defun minimizador-a-b (sucesores profundidad alfa beta)
+;  (dbg "minimizar~%")
   (let ((mejores-sucesores (list (first sucesores)))
         (valor 0)
 	(mejor nil))
@@ -102,7 +116,8 @@
 	   (setf beta valor)
 	   (setf mejores-sucesores (list sucesor)))
 	 (when (>= alfa beta)
-	   (return)))
+	   (return))
+	 )
     (setf mejor (elegir-aleatoriamente mejores-sucesores))
     (setf (nodo-valor mejor) beta)
     mejor))
