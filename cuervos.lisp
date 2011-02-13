@@ -436,8 +436,8 @@
   
 (defun funcion-estatica1 (estado turno)
   (let ((resultado 0))
-    (cond ((es-estado-ganador estado turno 'MAX) (return-from funcion-estatica1 *minimo-valor*))
-	  ((es-estado-ganador estado turno 'MIN) (return-from funcion-estatica1 *maximo-valor*))
+    (cond ((es-estado-ganador estado turno 'MAX) (return-from funcion-estatica1 *maximo-valor*))
+	  ((es-estado-ganador estado turno 'MIN) (return-from funcion-estatica1 *minimo-valor*))
 	  ((equal turno 'MAX) ;el resultado tiene que ser el mayor posible para el jugador actual
 	   (cond ((juega-buitre :estado estado)
 		  (setf resultado (+ resultado
@@ -463,8 +463,8 @@
 
 (defun funcion-estatica2 (estado turno)
   (let ((resultado 0))
-    (cond ((es-estado-ganador estado turno 'MAX) (return-from funcion-estatica2 *minimo-valor*))
-	  ((es-estado-ganador estado turno 'MIN) (return-from funcion-estatica2 *maximo-valor*))
+    (cond ((es-estado-ganador estado turno 'MAX) (return-from funcion-estatica2 *maximo-valor*))
+	  ((es-estado-ganador estado turno 'MIN) (return-from funcion-estatica2 *minimo-valor*))
 	  ((equal turno 'MAX)
 	   (cond ((juega-buitre :estado estado)
 		  (setf resultado (+ resultado (first (mejor-salto estado)) (length (puede-saltar estado (buscar-buitre estado))))))
@@ -520,45 +520,6 @@
 					(first (mejor-salto estado)))))))))
     resultado))
 
-(defun funcion-estatica5bis (estado turno)
-  (declare (optimize (debug 2)))
-  (let ((resultado 0)
-	(buitre (buscar-buitre estado))
-	(cuervos (busca-cuervos estado))
-	(temp 0))
-    (cond ((es-estado-ganador estado turno 'MAX) (setf resultado *minimo-valor*))
-	  ((es-estado-ganador estado turno 'MIN) (setf resultado *maximo-valor*))
-	  ((juega-buitre :estado estado)
-	   ;dos puntos por cada movimiento que pueda hacer el buitre
-	   (setf resultado (+ resultado (* 2 (length (se-puede-mover estado buitre)))))
-	   ;cinco puntos por cada salto que pueda hacer
-	   (setf resultado (+ resultado (* 50 (length (puede-saltar-multiple estado buitre)))))
-	   )
-	  ((juegan-cuervos :estado estado)
-	   (cond ((faltan-cuervos :estado estado)
-		  (loop for x in cuervos
-		     when (or
-			   (= x 0) (= x 1) (= x 4)
-			   (= x 8) (= x 9))
-		     do
-		       (setf temp (+ 100 temp)))
-		  ;pero sólo cuatro! en las cinco esquinas es un poco perder un cuervo
-		  (when (= 500 temp)
-		    (setf temp (- temp 150)))
-		  (setf resultado (+ resultado temp))
-		  ;diez puntos por cada salto que pueda hacer
-		  (setf resultado (- resultado (* 100 (length (puede-saltar-multiple estado buitre))))))
-		 (t
-		  ;dos puntos por cada movimiento que pueda hacer el buitre
-		  (setf resultado (- resultado (* 1 (length (se-puede-mover estado buitre)))))
-		  ;diez puntos por cada salto que pueda hacer
-		  (setf resultado (- resultado (* 10 (length (puede-saltar-multiple estado buitre)))))))
-	   ))
-    (when (equal turno 'min)
-      (setf resultado (* -1 resultado)))
-    resultado))
-	  
-
 (defun funcion-estatica5 (estado turno)
   (declare (optimize (debug 2)))
   ;la idea es ir dando puntos según me guste la situación del juego y después adaptarlo según sea para MAX o MIN
@@ -570,7 +531,7 @@
 	  ((juega-buitre :estado estado)
 	   (let ((buitre (buscar-buitre estado)))
 	     (when (faltan-cuervos :estado estado)
-	       (cond ((= buitre -1) nil);algo cuando el buitre no está puesto? TODO
+	       (cond ((= buitre -1) nil)
 		     ((or
 		       (= buitre 2)
 		       (= buitre 3)
@@ -582,7 +543,7 @@
 	     ;si podemos comer algun cuervo mola! si son varios EPIC!
 	     ;un punto por cada buitre que puedas comer majo
 	     (setf resultado (+ resultado (first (mejor-salto estado))))
-	     ;si estamos cerca de algun cuervo mola, un punto por cada cuervo que tengas cerca TODO seguro?
+	     ;si estamos cerca de algun cuervo mola, un punto por cada cuervo que tengas cerca
 	     (let ((max (if (>= buitre 0)
 			    (length (nth buitre *lista-movimientos*))
 			    0))
@@ -590,7 +551,7 @@
 	       (setf resultado (+ resultado (- max actuales))))
 	     ))
 	  ((juegan-cuervos :estado estado)
-	   ;TODO tener en cuenta que si me han comido cuervos, ya no me gusta tanto que estén en las esquinas, no terminará nunca
+	   ;tener en cuenta que si me han comido cuervos, ya no me gusta tanto que estén en las esquinas, no terminará nunca
 	   (cond ((faltan-cuervos :estado estado) ;faltan cuervos que poner
 		  ;le doy mucha importancia a cuatro cuervos en las esquinas
 		  (loop for x in cuervos-en
